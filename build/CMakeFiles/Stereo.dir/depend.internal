@@ -388,3 +388,10 @@ CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o
  /usr/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h
  /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h
  /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h
+ /usr/include/eigen3/unsupported/Eigen/MatrixFunctions
+ /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixExponential.h
+ /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixFunction.h
+ /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixLogarithm.h
+ /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h
+ /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixSquareRoot.h
+ /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/StemFunction.h

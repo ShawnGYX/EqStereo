@@ -9,6 +9,9 @@
 #include <math.h>
 #include <Eigen/Eigen>
 
+#include <unsupported/Eigen/MatrixFunctions>
+
+
 #include <opencv2/video/tracking.hpp>
 #include <opencv2/stereo/stereo.hpp>
 #include <opencv2/core/eigen.hpp>
@@ -23,6 +26,10 @@
 using namespace std;
 using namespace cv;
 
+using colorVec = std::array<uchar, 3>;
+
+
+
 typedef Eigen::Vector3d             vec3d;
 typedef Eigen::Matrix3d             mat3d;
 typedef Eigen::Matrix<double, 6, 1> vec6d;
@@ -30,27 +37,28 @@ typedef Eigen::Matrix<double, 6, 6> mat6d;
 typedef Eigen::Matrix<double, 3, 6> mat3x6d;
 typedef Eigen::Matrix<double, 2, 6> mat2x6d;
 
+struct Innov
+{
+    
+    Eigen::Matrix4d Del;
+    
+    Eigen::MatrixXd del;
 
+};
 
 struct Landmark 
 {
-    vector<Eigen::Vector2d> camcoor_left;
-    vector<Eigen::Vector2d> camcoor_right;
+    Eigen::Vector2d camcoor_left;
+    Eigen::Vector2d camcoor_right;
 
     Eigen::Vector3d p_0;
 
     Eigen::Vector3d X_lm;
-
-    int lifecycle;
-
-    int idnum;
-
+    
     Eigen::Vector2d camcoor_left_hat;
-
     Eigen::Vector2d camcoor_right_hat;
 
-    
-
+    Eigen::Matrix3d sig;
 };
 
 
@@ -60,11 +68,7 @@ class StereoCamera
 public:
     Eigen::Matrix3d Rotation;
     Eigen::Vector3d Translation;
-
-    // Mat ROT;
-    // Mat TRANS;
-    
-    
+      
     Mat Image_t0_L;
     Mat Image_t0_R; 
     Mat Image_t1_L;
@@ -104,13 +108,17 @@ public:
                                             0.0, 0.0, 0.0, 1.0).finished();                                        
 
     // EqF variables
+
     vector<Landmark> landmarks;
-    vector<Landmark> landmarks_visible;
+
     Eigen::Matrix4d X_rb;
     Eigen::Matrix4d P_init;
     Eigen::MatrixXd Sigma;
-    Eigen::MatrixXd P;
-    Eigen::MatrixXd Q;
+    
+    double P_coef = 0.1;
+    double Q_coef = 0.1;
+
+    double Sigma_coef = 3;
     
 
     double dt = 0.05;
@@ -132,6 +140,11 @@ public:
 
 
     // Velocity estimation functions
+
+
+
+
+
 
     vector<Point2f> DetectNewFeatures(const Mat &image)
     {
@@ -369,23 +382,9 @@ public:
         X_rb = X_rb * vel;
     }
 
-    void update_delta(const Eigen::VectorXd delta)
+    Eigen::MatrixXd compute_c()
     {
-        int lm_num = delta.size();
-        
-
-        for (int i = 0; i < lm_num; i++)
-        {
-            Eigen::Vector3d d;
-            d << delta[1+3*(i-1)],delta[2+3*(i-1)],delta[3*i];
-            landmarks_visible[i].X_lm += dt * d;
-        }
-        
-    }
-
-    Eigen::MatrixXd compute_c_and_error()
-    {
-        int lm_num = landmarks_visible.size();
+        int lm_num = landmarks.size();
         Eigen::Matrix4d Phat;
         Phat = P_init*X_rb;
 
@@ -394,7 +393,7 @@ public:
         for (int i = 0; i < lm_num; i++)
         {
             Eigen::Vector3d pi_hat;
-            pi_hat = landmarks_visible[i].p_0 + P_init.block<3,3>(0,0)*landmarks_visible[i].X_lm;
+            pi_hat = landmarks[i].p_0 + P_init.block<3,3>(0,0)*landmarks[i].X_lm;
 
             Eigen::Vector4d pi_hat_homo;
             pi_hat_homo << pi_hat.x(),pi_hat.y(),pi_hat.z(),1;
@@ -419,8 +418,8 @@ public:
             Eigen::Matrix<double,2,3> ci_right;
             ci_right = de_right*XR.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).transpose();
 
-            C.block<2,3>(4*(i-1),3*(i-1)) = ci_left;
-            C.block<2,3>(2+4*(i-1),3*(i-1)) = ci_right;
+            C.block<2,3>(4*(i),3*(i)) = ci_left;
+            C.block<2,3>(2+4*(i),3*(i)) = ci_right;
 
             double p_x_l, p_x_r, p_y_l, p_y_r;
             p_x_l = fx_left*yi_hat_left.x()/yi_hat_left.z()+cx_left;
@@ -428,17 +427,153 @@ public:
             p_y_l = fy_left*yi_hat_left.y()/yi_hat_left.z()+cy_left;
             p_y_r = fy_right*yi_hat_right.y()/yi_hat_right.z()+cy_right;
 
-            landmarks_visible[i].camcoor_left_hat << p_x_l,p_y_l;
-            landmarks_visible[i].camcoor_right_hat << p_x_r,p_y_r;
+            landmarks[i].camcoor_left_hat << p_x_l,p_y_l;
+            landmarks[i].camcoor_right_hat << p_x_r,p_y_r;
 
 
         }
         
     }
 
+    Eigen::MatrixXd compute_error()
+    {
+        int lm_num = landmarks.size();
+        Eigen::Vector2d err_left;
+        Eigen::Vector2d err_right;
+
+
+        Eigen::MatrixXd measurement_err = Eigen::MatrixXd::Zero(lm_num,1);
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            err_left = landmarks[i].camcoor_left-landmarks[i].camcoor_left_hat;
+            err_right = landmarks[i].camcoor_right-landmarks[i].camcoor_right_hat;
+
+            measurement_err.block<2,1>(4*(i),0) = err_left;
+            measurement_err.block<2,1>(2+4*(i),0) = err_right;
+        }
+        
+        return measurement_err;
+
+
+    }
+
+    void build_Sigma()
+    {
+        int lm_num = landmarks.size();
+
+        Sigma = Eigen::MatrixXd::Zero(3*lm_num,3*lm_num);
+        
+        for (int i = 0; i < lm_num; i++)
+        {
+            Sigma.block<3,3>(3*(i),3*(i)) = landmarks[i].sig;
+        }
+
+    }
+
+    void update_Sigma(const Eigen::MatrixXd &C_mat)
+    {
+        int lm_num = landmarks.size();
+
+        Eigen::MatrixXd P = Eigen::MatrixXd::Identity(3*lm_num,3*lm_num)*P_coef;
+        Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(4*lm_num,4*lm_num)*Q_coef;
+
+        Eigen::MatrixXd s;
+        s = C_mat*Sigma*C_mat.transpose()+Q;
+
+        Sigma += dt*(P-Sigma*C_mat.transpose()*s.inverse()*C_mat*Sigma);
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            landmarks[i].sig = Sigma.block<3,3>(3*(i),3*(i));
+        }
+    }
+
+
+    Innov Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err)
+    {
+        
+        int lm_num = landmarks.size();
+        Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(4*lm_num,4*lm_num)*Q_coef;
+
+        Eigen::MatrixXd s;
+        s = C_mat*Sigma*C_mat.transpose()+Q;
+        Eigen::MatrixXd gamma;
+        gamma = Sigma*C_mat.transpose()*s.inverse()*err;
+
+        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(3*lm_num,6);
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            Eigen::Vector4d q_i;
+            Eigen::Vector4d pi_homo;
+
+            pi_homo << landmarks[i].p_0.x(),landmarks[i].p_0.y(),landmarks[i].p_0.z(),1;
+
+            q_i = P_init.inverse()*pi_homo;
+
+            Eigen::Matrix3d q_a;
+            q_a = x_skew(landmarks[i].X_lm+q_i.head(3));
+
+            A.block<3,3>(3*(i),0) = q_a;
+            A.block<3,3>(3*(i),3) = -1*Eigen::Matrix3d::Identity();
+
+        }
+
+        Eigen::VectorXd v;
+        v = (A.transpose()*A).inverse()*A.transpose()*gamma;
+
+        Eigen::Matrix3d v_skew;
+        v_skew = x_skew(v.head(3));
+
+        Eigen::Matrix4d Delta = Eigen::Matrix4d::Zero();
+        Delta.block<3,3>(0,0) = v_skew;
+        Delta.block<3,1>(0,3) = v.tail(3);
+
+        Eigen::MatrixXd delta = Eigen::MatrixXd::Zero(3*lm_num,1);
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            Eigen::Vector4d q_i;
+            Eigen::Vector4d pi_homo;
+
+            pi_homo << landmarks[i].p_0.x(),landmarks[i].p_0.y(),landmarks[i].p_0.z(),1;
+
+            q_i = P_init.inverse()*pi_homo;
+
+            delta.block<3,1>(3*(i),0) = gamma.block<3,1>(3*(i),0)+v_skew*q_i.head(3)+v.tail(3);
+        }
+
+
+        Innov Inn;
+        Inn.Del = Delta;
+        Inn.del = delta;
+
+        return Inn;
+
+    }
+
+    void update_innovation(const Innov &innovation)
+    {
+        int lm_num = landmarks.size();
+
+        Eigen::MatrixXd delta = innovation.del;
+        Eigen::Matrix4d Delta = innovation.Del;
+
+        X_rb = (dt*Delta).exp()*X_rb;
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            Eigen::Vector3d d;
+            d << delta(3*i,0),delta(1+3*i,0),delta(2+3*i,0);
+            landmarks[i].X_lm = landmarks[i].X_lm + dt * d + dt * Delta.block<3,3>(0,0) * landmarks[i].X_lm;
+        }
+        
+    }
 
 
 
+    
 
     // Processing image
 

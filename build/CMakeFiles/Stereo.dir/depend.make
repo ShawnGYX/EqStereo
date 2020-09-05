@@ -387,4 +387,11 @@ CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/Eigen/src/pl
 CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h
 CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseBinaryOps.h
 CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/Eigen/src/plugins/MatrixCwiseUnaryOps.h
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/MatrixFunctions
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixExponential.h
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixFunction.h
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixLogarithm.h
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/MatrixSquareRoot.h
+CMakeFiles/Stereo.dir/src/StereoMatching.cpp.o: /usr/include/eigen3/unsupported/Eigen/src/MatrixFunctions/StemFunction.h
 
