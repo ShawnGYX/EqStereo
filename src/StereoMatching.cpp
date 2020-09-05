@@ -39,9 +39,17 @@ struct Landmark
 
     Eigen::Vector3d p_0;
 
+    Eigen::Vector3d X_lm;
+
     int lifecycle;
 
     int idnum;
+
+    Eigen::Vector2d camcoor_left_hat;
+
+    Eigen::Vector2d camcoor_right_hat;
+
+    
 
 };
 
@@ -68,11 +76,15 @@ public:
     double minHarrisQuality = 0.1;
     double featureSearchThreshold = 1.0;
     
-    
-    float Baseline = 0.1;
-    float Focal = 458;
-    float cx = 367.215;
-    float cy = 248.375;
+    float fx_left = 458.654;
+    float fy_left = 457.296;
+    float cx_left = 367.215;
+    float cy_left = 248.375;
+
+    float fx_right = 457.587;
+    float fy_right = 456.134;
+    float cx_right = 379.999;
+    float cy_right = 255.238;
 
     Mat Camera_left = (Mat_<double>(3,3) << 458.654, 0.0, 367.215, 0.0, 457.296, 248.375, 0.0, 0.0, 1.0);
     Mat Distortion_coef_left = (Mat_<double>(1,4) << -0.2834, 0.073959, 0.0001936, 0.000017618);
@@ -81,14 +93,25 @@ public:
     Mat Distortion_coef_right = (Mat_<double>(1,4) << -0.28368, 0.07451284, -0.00010473, 0.000035559);;
 
 
+    Eigen::Matrix4d XL = (Eigen::Matrix4d()<<0.0148655429818, -0.999880929698, 0.00414029679422, -0.0216401454975,
+                                            0.999557249008, 0.0149672133247, 0.025715529948, -0.064676986768,
+                                            -0.0257744366974, 0.00375618835797, 0.999660727178, 0.00981073058949,
+                                            0.0, 0.0, 0.0, 1.0).finished();
+
+    Eigen::Matrix4d XR = (Eigen::Matrix4d()<<0.0125552670891, -0.999755099723, 0.0182237714554, -0.0198435579556,
+                                            0.999598781151, 0.0130119051815, 0.0251588363115, 0.0453689425024,
+                                            -0.0253898008918, 0.0179005838253, 0.999517347078, 0.00786212447038,
+                                            0.0, 0.0, 0.0, 1.0).finished();                                        
+
     // EqF variables
     vector<Landmark> landmarks;
-    Eigen::Matrix4d Obs_A;
-    vector<Eigen::Vector3d> Obs_a;
+    vector<Landmark> landmarks_visible;
+    Eigen::Matrix4d X_rb;
     Eigen::Matrix4d P_init;
     Eigen::MatrixXd Sigma;
     Eigen::MatrixXd P;
     Eigen::MatrixXd Q;
+    
 
     double dt = 0.05;
 
@@ -97,9 +120,18 @@ public:
 
 public:
 
+    Eigen::Matrix3d x_skew(const Eigen::Vector3d x)
+    {
+        Eigen::Matrix3d x_s;
+        x_s << 0.0,-x.x(),x.y(),
+                x.z(),0,-x.x(),
+                -x.y(),x.x(),0;
+        
+        return x_s;
+    }
 
 
-
+    // Velocity estimation functions
 
     vector<Point2f> DetectNewFeatures(const Mat &image)
     {
@@ -132,25 +164,6 @@ public:
         calcOpticalFlowPyrLK(image_left, image_right, landmarksleft, newPoints, status, error);
 
         return newPoints;
-    }
-
-
-    void Rejection(const vector<Point2f> &set_1, const vector<Point2f> &set_2, vector<Point2f> &lm_1, vector<Point2f> &lm_2)
-    {
-        int l = set_1.size();
-        for (int i = 0; i < l-1; i++)
-        {
-            Point2f p1 = set_1[i];
-            Point2f p2 = set_2[i];
-            Point2f res = p1-p2;
-            if ((abs(res.x)<20) && (abs(res.y)<20))
-            {
-                lm_1.emplace_back(p1);
-                lm_2.emplace_back(p2);
-            }
-            
-        }
-        
     }
 
     void Triangulation_Euroc(const vector<Point2f> &pl, const vector<Point2f> &pr, vector<Point3f> &p_3d)
@@ -307,8 +320,8 @@ public:
 
 			    mat2x6d jacobian_mat;
 			    jacobian_mat <<
-				    Focal/z, 0, -Focal*x/(z*z), -Focal*x*y/(z*z), Focal+Focal*x*x/(z*z), -Focal*y/z,
-                    0, Focal/z, -Focal*y/(z*z), -Focal-Focal*y*y/(z*z), Focal*x*y/(z*z), Focal*x/z;
+				    fx_left/z, 0, -fx_left*x/(z*z), -fx_left*x*y/(z*z), fx_left+fx_left*x*x/(z*z), -fx_left*y/z,
+                    0, fy_left/z, -fy_left*y/(z*z), -fy_left-fy_left*y*y/(z*z), fy_left*x*y/(z*z), fy_left*x/z;
 
 			    h += jacobian_mat.transpose() * jacobian_mat * weight;
 			    g += jacobian_mat.transpose() * -err * weight;
@@ -348,6 +361,86 @@ public:
 	    return iter;
     }
 
+
+    // EqF functions
+
+    void update_vel(const Eigen::Matrix3d vel)
+    {
+        X_rb = X_rb * vel;
+    }
+
+    void update_delta(const Eigen::VectorXd delta)
+    {
+        int lm_num = delta.size();
+        
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            Eigen::Vector3d d;
+            d << delta[1+3*(i-1)],delta[2+3*(i-1)],delta[3*i];
+            landmarks_visible[i].X_lm += dt * d;
+        }
+        
+    }
+
+    Eigen::MatrixXd compute_c_and_error()
+    {
+        int lm_num = landmarks_visible.size();
+        Eigen::Matrix4d Phat;
+        Phat = P_init*X_rb;
+
+        Eigen::MatrixXd C = Eigen::MatrixXd::Zero(4*lm_num,3*lm_num);
+
+        for (int i = 0; i < lm_num; i++)
+        {
+            Eigen::Vector3d pi_hat;
+            pi_hat = landmarks_visible[i].p_0 + P_init.block<3,3>(0,0)*landmarks_visible[i].X_lm;
+
+            Eigen::Vector4d pi_hat_homo;
+            pi_hat_homo << pi_hat.x(),pi_hat.y(),pi_hat.z(),1;
+
+            Eigen::Vector4d yi_hat_left;
+            yi_hat_left = XL.inverse()*Phat.inverse()*pi_hat_homo;
+
+            Eigen::Matrix<double,2,3> de_left;
+            de_left << fx_left/yi_hat_left.z(),0,-fx_left*yi_hat_left.x()/(yi_hat_left.z()*yi_hat_left.z()),
+                        0,fy_left/yi_hat_left.z(),-fy_left*yi_hat_left.y()/(yi_hat_left.z()*yi_hat_left.z());
+
+            Eigen::Matrix<double,2,3> ci_left;
+            ci_left = de_left*XL.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).transpose();
+
+            Eigen::Vector4d yi_hat_right;
+            yi_hat_right = XR.inverse()*Phat.inverse()*pi_hat_homo;
+
+            Eigen::Matrix<double,2,3> de_right;
+            de_right << fx_right/yi_hat_right.z(),0,-fx_right*yi_hat_right.x()/(yi_hat_right.z()*yi_hat_right.z()),
+                        0,fy_right/yi_hat_right.z(),-fy_right*yi_hat_right.y()/(yi_hat_right.z()*yi_hat_right.z());
+
+            Eigen::Matrix<double,2,3> ci_right;
+            ci_right = de_right*XR.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).transpose();
+
+            C.block<2,3>(4*(i-1),3*(i-1)) = ci_left;
+            C.block<2,3>(2+4*(i-1),3*(i-1)) = ci_right;
+
+            double p_x_l, p_x_r, p_y_l, p_y_r;
+            p_x_l = fx_left*yi_hat_left.x()/yi_hat_left.z()+cx_left;
+            p_x_r = fx_right*yi_hat_right.x()/yi_hat_right.z()+cx_right;
+            p_y_l = fy_left*yi_hat_left.y()/yi_hat_left.z()+cy_left;
+            p_y_r = fy_right*yi_hat_right.y()/yi_hat_right.z()+cy_right;
+
+            landmarks_visible[i].camcoor_left_hat << p_x_l,p_y_l;
+            landmarks_visible[i].camcoor_right_hat << p_x_r,p_y_r;
+
+
+        }
+        
+    }
+
+    
+
+
+
+    // Processing image
 
     void ProcessImage(const sensor_msgs::ImageConstPtr& msg_left, const sensor_msgs::ImageConstPtr& msg_right)
     {
