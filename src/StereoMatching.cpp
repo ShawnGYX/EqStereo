@@ -364,7 +364,7 @@ public:
 
     // EqF functions
 
-    void update_vel(const Eigen::Matrix3d vel)
+    void update_vel(const Eigen::Matrix4d vel)
     {
         X_rb = X_rb * vel;
     }
@@ -436,7 +436,7 @@ public:
         
     }
 
-    
+
 
 
 
