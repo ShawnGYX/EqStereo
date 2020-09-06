@@ -118,9 +118,9 @@ public:
 
     vector<Landmark> landmarks;
 
-    Eigen::Matrix4d X_rb;
-    Eigen::Matrix4d P_init;
-    Eigen::MatrixXd Sigma;
+    Eigen::Matrix4d X_rb = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d P_init = Eigen::Matrix4d::Identity();
+    
     
     double P_coef = 0.1;
     double Q_coef = 0.1;
@@ -668,6 +668,8 @@ public:
 
 
         }
+
+        return C;
         
     }
 
@@ -678,7 +680,7 @@ public:
         Eigen::Vector2d err_right;
 
 
-        Eigen::MatrixXd measurement_err = Eigen::MatrixXd::Zero(lm_num,1);
+        Eigen::MatrixXd measurement_err = Eigen::MatrixXd::Zero(4*lm_num,1);
 
         for (int i = 0; i < lm_num; i++)
         {
@@ -698,9 +700,10 @@ public:
 
     }
 
-    void build_Sigma()
+    Eigen::MatrixXd build_Sigma()
     {
         int lm_num = landmarks.size();
+        Eigen::MatrixXd Sigma;
 
         Sigma = Eigen::MatrixXd::Zero(3*lm_num,3*lm_num);
         
@@ -709,11 +712,15 @@ public:
             Sigma.block<3,3>(3*(i),3*(i)) = landmarks[i].sig;
         }
 
+        return Sigma;
+
     }
 
-    void update_Sigma(const Eigen::MatrixXd &C_mat)
+    void update_Sigma(Eigen::MatrixXd &C_mat, Eigen::MatrixXd &Sigma)
     {
         int lm_num = landmarks.size();
+
+        
 
         Eigen::MatrixXd P = Eigen::MatrixXd::Identity(3*lm_num,3*lm_num)*P_coef;
         Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(4*lm_num,4*lm_num)*Q_coef;
@@ -730,7 +737,7 @@ public:
     }
 
 
-    Innov Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err)
+    Innov Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err, const Eigen::MatrixXd &Sigma)
     {
         
         int lm_num = landmarks.size();
@@ -913,6 +920,39 @@ public:
 
             Save_Matrix(tfmat, "/home/shawnge/euroc_test/trajec.txt");
             Save_t(t,"/home/shawnge/euroc_test/time.txt");
+
+
+
+
+            // EqF
+            if (abs(tfmat(0,3))>0.8 || abs(tfmat(1,3))>0.8 || abs(tfmat(2,3))>0.8)
+            {
+                this->update_vel(Eigen::Matrix4d::Identity());
+
+            }
+            else
+            {
+                this->update_vel(tfmat);
+            }
+            
+
+            this->update_vel(tfmat);
+            Eigen::MatrixXd C;
+            C = compute_c();
+            Eigen::MatrixXd err;
+            err = compute_error();
+            
+            Eigen::MatrixXd Sigma = this->build_Sigma();
+            this->update_Sigma(C,Sigma);
+            
+            Innov innovation;
+            innovation = Compute_innovation(C,err,Sigma);
+            this->update_innovation(innovation);
+
+            Eigen::Matrix4d pose;
+            pose = P_init*X_rb;
+
+            Save_Matrix(pose, "/home/shawnge/euroc_test/trajec_eqf.txt");
 
 
 
