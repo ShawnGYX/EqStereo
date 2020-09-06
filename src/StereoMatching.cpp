@@ -122,7 +122,7 @@ public:
     
     
     double P_coef = 0.1;
-    double Q_coef = 0.1;
+    double Q_coef = 0.5;
 
     double Sigma_coef = 3;
     
@@ -919,7 +919,7 @@ public:
 
 
             // EqF
-            if (abs(tfmat(0,3))>0.8 || abs(tfmat(1,3))>0.8 || abs(tfmat(2,3))>0.8)
+            if (Translation.norm()>1)
             {
                 this->update_vel(Eigen::Matrix4d::Identity());
 
@@ -930,7 +930,7 @@ public:
             }
             
 
-            this->update_vel(tfmat);
+
             Eigen::MatrixXd C;
             C = compute_c();
             Eigen::MatrixXd err;
@@ -947,169 +947,12 @@ public:
             pose = P_init*X_rb;
 
             Save_Matrix(pose, "/home/shawnge/euroc_test/trajec_eqf.txt");
-
-
-
-
-
             Image_t0_L = cv_ptr_left->image.clone();
             Image_t0_R = cv_ptr_right->image.clone();
 
             
         }
         
-    }
-
-    void ProcessImage(const sensor_msgs::ImageConstPtr& msg_left, const sensor_msgs::ImageConstPtr& msg_right)
-    {
-        
-
-        cv_bridge::CvImagePtr cv_ptr_left;
-        cv_bridge::CvImagePtr cv_ptr_right;
-        try
-        {
-            cv_ptr_left = cv_bridge::toCvCopy(msg_left, sensor_msgs::image_encodings::MONO8);
-            cv_ptr_right = cv_bridge::toCvCopy(msg_right, sensor_msgs::image_encodings::MONO8);
-        }
-        catch(cv_bridge::Exception& e)
-        {
-            ROS_ERROR("cv_bridge exception: %s", e.what());
-            return;
-        }
-        
-        if (!flag)
-        {
-            Image_t0_L = cv_ptr_left->image.clone();
-            Image_t0_R = cv_ptr_right->image.clone();
-            flag = 1;
-        }
-        else
-        {
-            vector<Point2f> landmarksLeft_t0;
-            vector<Point2f> landmarksRight_t0;
-            vector<Point2f> landmarksLeft_t1;
-            vector<Point2f> landmarksRight_t1;
-            // vector<Point2f> lm_in_left_t0, lm_in_left_t1, lm_in_right_t0, lm_in_right_t1;
-
-            double t = cv_ptr_left->header.stamp.toSec();
-
-            cout<<setprecision(14)<<t<<endl;
-
-            Image_t1_L = cv_ptr_left->image.clone();
-            Image_t1_R = cv_ptr_right->image.clone();
-            
-            landmarksLeft_t0 = DetectNewFeatures(Image_t0_L);
-            // if(landmarksLeft_t0.size()<40) return;
-            landmarksRight_t0 = TrackFeatures_LR(Image_t0_L, Image_t0_R, landmarksLeft_t0);
-            landmarksLeft_t1 = TrackFeatures_Time(Image_t0_L,Image_t1_L, landmarksLeft_t0);
-            landmarksRight_t1 = TrackFeatures_LR(Image_t1_L, Image_t1_R, landmarksLeft_t1);
-            
-
-
-
-            
-            
-        //     Mat image = Image_t1_L.clone();
-        // Mat image_1; 
-        // cvtColor(image,image_1, COLOR_GRAY2RGB);
-        // Mat image2 = Image_t1_R.clone();
-        // Mat image_2;
-        // cvtColor(image2,image_2, COLOR_GRAY2RGB);
-        // auto length = landmarksLeft_t0.size();
-        // auto length2 = landmarksRight_t0.size();
-        // for (int i = 0; i < length-1; i++)
-        // {
-        //     circle(image_1, landmarksLeft_t1[i], 5, Scalar(0,0,255));
-        //     line(image_1, landmarksLeft_t0[i], landmarksLeft_t1[i],Scalar(0,255,0));
-        // }
-        // for (int i = 0; i < length2-1; i++)
-        // {
-        //     circle(image_2, landmarksRight_t1[i], 5, Scalar(0,0,255));
-        //     line(image_2, landmarksRight_t0[i], landmarksRight_t1[i],Scalar(0,255,0));
-        // }
-        
-
-        // imwrite("/home/shawnge/euroc_test1/left.png",image_1);
-        // imwrite("/home/shawnge/euroc_test1/right.png",image_2);
-
-
-        vector<Point2f> lm_l_0, lm_l_1, lm_r_0, lm_r_1, lm_t0_image_left, lm_t0_image_left_rej;
-        vector<Point2f> lm_t0_image_right, lm_t1_image_left;
-
-
-        undistortPoints(landmarksLeft_t0, lm_l_0, Camera_left, Distortion_coef_left);
-        undistortPoints(landmarksLeft_t1, lm_l_1, Camera_left, Distortion_coef_left);
-        undistortPoints(landmarksRight_t0, lm_r_0, Camera_right, Distortion_coef_right);
-        undistortPoints(landmarksRight_t1, lm_r_1, Camera_right, Distortion_coef_right);
-
-        undistortPoints(landmarksLeft_t0,lm_t0_image_left, Camera_left, Distortion_coef_left, noArray(), Camera_left);
-        undistortPoints(landmarksLeft_t1,lm_t1_image_left, Camera_left, Distortion_coef_left, noArray(), Camera_left);
-        undistortPoints(landmarksRight_t0,lm_t0_image_right, Camera_right, Distortion_coef_right, noArray(), Camera_right);
-
-
-        vector<Point3f> pntset_0;
-        vector<Point3f> pntset_1;
-
-        vector<Point3f> pntset_0_rej;
-        vector<Point3f> pntset_1_rej;
-
-        Triangulation_Euroc(lm_l_0, lm_r_0, pntset_0);
-        Triangulation_Euroc(lm_r_0, lm_r_1, pntset_1);
-
-        // for (int i = 0; i < pntset_0.size(); i++)
-        // {
-        //     if (pntset_0[i].z<6 && pntset_1[i].z<6)
-        //     {
-        //         pntset_0_rej.emplace_back(pntset_0[i]);
-        //         pntset_1_rej.emplace_back(pntset_1[i]);
-        //         lm_t0_image_left_rej.emplace_back(lm_t0_image_left[i]);
-        //     }
-        // }
-        
-
-        Rotation << 1,0,0,0,1,0,0,0,1;
-        Translation << 0,0,0;
-
-        Mat rvec, tvec;
-
-        solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.98999, noArray(), cv::SOLVEPNP_EPNP);
-        cv::Mat R_inbuilt;
-        cv::Rodrigues(rvec, R_inbuilt);
-        Eigen::Matrix3d r_mat;
-        Eigen::MatrixXd t_mat;
-        cv2eigen(tvec,t_mat);
-        cv::cv2eigen(R_inbuilt, r_mat);
-        Eigen::Vector3d t_1;
-        t_1 = -r_mat.transpose()*t_mat;
-
-        
-        
-        Rotation = r_mat.transpose();
-        Translation = t_1;
-
-        for (int iteration_1 = 0; iteration_1 < 6; iteration_1++)
-        {
-            int iter4 = reprojection_gauss_newton(lm_t1_image_left,pntset_0,Rotation,Translation);
-        }
-
-        Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
-        Translation << -Translation;
-
-        Eigen::Matrix4d tfmat = Eigen::Matrix4d::Identity();
-        tfmat.block<3,3>(0,0) << Rotation;
-        tfmat.block<3,1>(0,3) << Translation;
-
-        Save_Matrix(tfmat, "/home/shawnge/euroc_test/trajec.txt");
-        Save_t(t,"/home/shawnge/euroc_test/time.txt");
-
- 
-
-        Image_t0_L = cv_ptr_left->image.clone();
-        Image_t0_R = cv_ptr_right->image.clone();
-        }
-
-
-
     }
 
 };
