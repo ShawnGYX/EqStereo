@@ -56,7 +56,6 @@ struct Landmark
     Point2f camcoor_right_norm;
 
     Eigen::Vector3d p_0;
-    Point3f p_0_cv;
     Point3f p_t_bff;
 
 
@@ -318,16 +317,11 @@ public:
             
             float x = z*newLandmarks[i].camcoor_left_norm.x;
             float y = z*newLandmarks[i].camcoor_left_norm.y;
-            Point3f pnt;
             Eigen::Vector4d pnt_eigen(x,y,z,1);
-            pnt.x = x;
-            pnt.y = y;
-            pnt.z = z;
+           
 
             Eigen::Vector4d pnt_global;
-            pnt_global = Phat*pnt_eigen;
-
-            newLandmarks[i].p_0_cv = pnt;
+            pnt_global = Phat*XL*pnt_eigen;           
             newLandmarks[i].p_0 = pnt_global.head(3);
        
         }
