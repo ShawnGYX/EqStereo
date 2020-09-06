@@ -81,7 +81,7 @@ public:
     Mat Image_t1_R;
     int flag = 0;
 
-    int maxFeatures = 500;
+    int maxFeatures = 80;
     double featureDist = 20;
     double minHarrisQuality = 0.1;
     double featureSearchThreshold = 1.0;
@@ -121,10 +121,10 @@ public:
     Eigen::Matrix4d P_init = Eigen::Matrix4d::Identity();
     
     
-    double P_coef = 0.1;
-    double Q_coef = 0.5;
+    double P_coef = 0.01;
+    double Q_coef = 0.01;
 
-    double Sigma_coef = 3;
+    double Sigma_coef = 5;
     
 
     double dt = 0.05;
@@ -368,6 +368,7 @@ public:
     {
         for (auto & lm : newlandmarks)
         {
+            if (landmarks.size() >= maxFeatures) break;
             landmarks.emplace_back(lm);
         }
     }
@@ -919,7 +920,7 @@ public:
 
 
             // EqF
-            if (Translation.norm()>1)
+            if (Translation.norm()>0.5)
             {
                 this->update_vel(Eigen::Matrix4d::Identity());
 
