@@ -48,10 +48,17 @@ struct Innov
 
 struct Landmark 
 {
-    Eigen::Vector2d camcoor_left;
-    Eigen::Vector2d camcoor_right;
+    Point2f camcoor_left_distorted;
+    Point2f camcoor_right_distorted;
+    Point2f camcoor_left;
+    Point2f camcoor_right;
+    Point2f camcoor_left_norm;
+    Point2f camcoor_right_norm;
 
     Eigen::Vector3d p_0;
+    Point3f p_0_cv;
+    Point3f p_t_bff;
+
 
     Eigen::Vector3d X_lm;
     
@@ -142,9 +149,238 @@ public:
     // Velocity estimation functions
 
 
+    void TrackLandmarks(const Mat &image_old, const Mat &image_new)
+    {
+        if (landmarks.empty()) return;
+
+        vector<Point2f> oldPoints;
+        for (const auto & feature: landmarks)
+        {
+            oldPoints.emplace_back(feature.camcoor_left_distorted);
+        }
+        
+        vector<Point2f> points;
+        vector<uchar> status;
+        vector<float> err;
+        calcOpticalFlowPyrLK(image_old, image_new, oldPoints, points, status, err);
+
+        vector<Point2f> pointsNorm;
+        cv::undistortPoints(points, pointsNorm, Camera_left, Distortion_coef_left);
+
+        vector<Point2f> points_Undistort;
+
+        cv::undistortPoints(points, points_Undistort, Camera_left, Distortion_coef_left, noArray(), Camera_left);
+
+        for (long int i=points.size()-1; i >= 0; --i) {
+            if (status[i] == 0) 
+            {
+                landmarks.erase(landmarks.begin() + i);
+                continue;
+            }
+
+            landmarks[i].camcoor_left = points_Undistort[i];
+            landmarks[i].camcoor_left_distorted = points[i];
+            landmarks[i].camcoor_left_norm = pointsNorm[i];
+
+        }
+
+
+    }
 
 
 
+    vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures)
+    {
+        vector<Point2f> newfeatures;
+
+        for (const auto & proposed : proposedFeatures)
+        {
+            bool useFlag = true;
+            for ( const auto & feature : this->landmarks)
+            {
+                if (norm(proposed - feature.camcoor_left_distorted) < featureDist)
+                {
+                    useFlag = false;
+                    break;
+                }
+            }
+
+            if (useFlag)
+            {
+                newfeatures.emplace_back(proposed);
+            }
+            
+        }
+
+        return newfeatures;
+    }
+
+    vector<Point2f> detectNewFeatures(const Mat &image)
+    {
+        vector<Point2f> proposedfeatures;
+        goodFeaturesToTrack(image,proposedfeatures,maxFeatures,minHarrisQuality,featureDist);
+
+        vector<Point2f> newFeatures = this->removeDuplicateFeatures(proposedfeatures);
+
+        return newFeatures;
+    }
+
+    vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures)
+    {
+        vector<Landmark> newlandmarks;
+        if (newFeatures.empty()) return newlandmarks;
+
+        vector<Point2f> newFeaturesNorm;
+        vector<Point2f> newFeatures_undistort;
+        cv::undistortPoints(newFeatures, newFeaturesNorm, Camera_left, Distortion_coef_left);
+        cv::undistortPoints(newFeatures, newFeatures_undistort, Camera_left, Distortion_coef_left, noArray(), Camera_left);
+
+        
+
+        for (int i = 0; i < newFeatures.size(); i++)
+        {
+            Landmark lm;
+            lm.camcoor_left_distorted = newFeatures[i];
+            lm.camcoor_left = newFeatures_undistort[i];
+            lm.camcoor_left_norm = newFeaturesNorm[i];
+            lm.X_lm = Eigen::Vector3d::Zero();
+            lm.sig = Eigen::Matrix3d::Identity()*Sigma_coef;
+            
+
+            newlandmarks.emplace_back(lm);
+        }
+        
+
+    }
+
+    void matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right)
+    {
+        if (proposedLandmarks.empty()) return;
+
+        vector<Point2f> LeftPoints;
+        for (const auto & feature: proposedLandmarks)
+        {
+            LeftPoints.emplace_back(feature.camcoor_left_distorted);
+        }
+        
+        vector<Point2f> points;
+        vector<uchar> status;
+        vector<float> err;
+        calcOpticalFlowPyrLK(image_left, image_right, LeftPoints, points, status, err);
+
+        vector<Point2f> pointsNorm;
+        cv::undistortPoints(points, pointsNorm, Camera_right, Distortion_coef_right);
+
+        vector<Point2f> pointsUndistort;
+        cv::undistortPoints(points, pointsUndistort, Camera_right, Distortion_coef_right, noArray(), Camera_right);
+
+        for (long int i=points.size()-1; i >= 0; --i) {
+            if (status[i] == 0) 
+            {
+                proposedLandmarks.erase(proposedLandmarks.begin() + i);
+                continue;
+            }
+ 
+            proposedLandmarks[i].camcoor_right_norm = pointsNorm[i];
+            proposedLandmarks[i].camcoor_right_distorted = points[i];
+            proposedLandmarks[i].camcoor_right = pointsUndistort[i];
+
+        }
+
+    }
+
+
+    void init3DCoordinates (vector<Landmark> &newLandmarks)
+    {
+        
+        Eigen::Matrix4d Phat;
+        Phat = P_init*X_rb;
+
+        Eigen::Matrix4d R12 = XL.inverse()*XR;
+
+        Eigen::Matrix3d Rot = R12.block<3,3>(0,0);
+        Eigen::Vector3d Trans = R12.block<3,1>(0,3);
+
+        for (int i = 0; i < newLandmarks.size(); i++)
+        {
+            Eigen::Matrix3d pnt_skew;
+            pnt_skew << 0,-1, newLandmarks[i].camcoor_right_norm.y,
+                        1,0,-newLandmarks[i].camcoor_right_norm.x,
+                        -newLandmarks[i].camcoor_right_norm.y,newLandmarks[i].camcoor_right_norm.x,0;
+            
+            Eigen::Vector3d pnt_l;
+            pnt_l << newLandmarks[i].camcoor_left_norm.x,newLandmarks[i].camcoor_left_norm.y,1;
+
+            Eigen::Vector3d nom = pnt_skew*Rot.transpose()*Trans;
+            Eigen::Vector3d den = pnt_skew*Rot.transpose()*pnt_l;
+
+            float z = nom.norm()/den.norm();
+            
+            float x = z*newLandmarks[i].camcoor_left_norm.x;
+            float y = z*newLandmarks[i].camcoor_left_norm.y;
+            Point3f pnt;
+            Eigen::Vector4d pnt_eigen(x,y,z,1);
+            pnt.x = x;
+            pnt.y = y;
+            pnt.z = z;
+
+            Eigen::Vector4d pnt_global;
+            pnt_global = Phat*pnt_eigen;
+
+            newLandmarks[i].p_0_cv = pnt;
+            newLandmarks[i].p_0 = pnt_global.head(3);
+       
+        }
+
+    }
+
+    void update3DCoordinate(vector<Landmark> &newLandmarks)
+    {
+        Eigen::Matrix4d R12 = XL.inverse()*XR;
+
+        Eigen::Matrix3d Rot = R12.block<3,3>(0,0);
+        Eigen::Vector3d Trans = R12.block<3,1>(0,3);
+
+        for (int i = 0; i < newLandmarks.size(); i++)
+        {
+            Eigen::Matrix3d pnt_skew;
+            pnt_skew << 0,-1, newLandmarks[i].camcoor_right_norm.y,
+                        1,0,-newLandmarks[i].camcoor_right_norm.x,
+                        -newLandmarks[i].camcoor_right_norm.y,newLandmarks[i].camcoor_right_norm.x,0;
+            
+            Eigen::Vector3d pnt_l;
+            pnt_l << newLandmarks[i].camcoor_left_norm.x,newLandmarks[i].camcoor_left_norm.y,1;
+
+            Eigen::Vector3d nom = pnt_skew*Rot.transpose()*Trans;
+            Eigen::Vector3d den = pnt_skew*Rot.transpose()*pnt_l;
+
+            float z = nom.norm()/den.norm();
+            
+            float x = z*newLandmarks[i].camcoor_left_norm.x;
+            float y = z*newLandmarks[i].camcoor_left_norm.y;
+            Point3f pnt;
+            Eigen::Vector3d pnt_eigen(x,y,z);
+            pnt.x = x;
+            pnt.y = y;
+            pnt.z = z;
+
+            newLandmarks[i].p_t_bff = pnt;
+       
+        }
+
+    }
+
+    void addNewLandmarks(vector<Landmark> newlandmarks)
+    {
+        for (auto & lm : newlandmarks)
+        {
+            landmarks.emplace_back(lm);
+        }
+    }
+
+
+
+    // Old feature tracking functions
 
     vector<Point2f> DetectNewFeatures(const Mat &image)
     {
@@ -446,8 +682,12 @@ public:
 
         for (int i = 0; i < lm_num; i++)
         {
-            err_left = landmarks[i].camcoor_left-landmarks[i].camcoor_left_hat;
-            err_right = landmarks[i].camcoor_right-landmarks[i].camcoor_right_hat;
+            Eigen::Vector2d cam_left, cam_right;
+            cam_left << landmarks[i].camcoor_left.x,landmarks[i].camcoor_left.y;
+            cam_right << landmarks[i].camcoor_right.x,landmarks[i].camcoor_right.y;
+
+            err_left = cam_left-landmarks[i].camcoor_left_hat;
+            err_right = cam_right-landmarks[i].camcoor_right_hat;
 
             measurement_err.block<2,1>(4*(i),0) = err_left;
             measurement_err.block<2,1>(2+4*(i),0) = err_right;
@@ -571,11 +811,120 @@ public:
         
     }
 
-
+    
 
     
 
     // Processing image
+
+    void ProcessImage_EqF(const sensor_msgs::ImageConstPtr& msg_left, const sensor_msgs::ImageConstPtr& msg_right)
+    {
+        cv_bridge::CvImagePtr cv_ptr_left;
+        cv_bridge::CvImagePtr cv_ptr_right;
+        try
+        {
+            cv_ptr_left = cv_bridge::toCvCopy(msg_left, sensor_msgs::image_encodings::MONO8);
+            cv_ptr_right = cv_bridge::toCvCopy(msg_right, sensor_msgs::image_encodings::MONO8);
+        }
+        catch(cv_bridge::Exception& e)
+        {
+            ROS_ERROR("cv_bridge exception: %s", e.what());
+            return;
+        }
+
+
+        if (!flag)
+        {
+            Image_t1_L = cv_ptr_left->image.clone();
+            Image_t1_R = cv_ptr_right->image.clone();
+            vector<Point2f> newFeatures = this->detectNewFeatures(Image_t1_L);
+            vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
+            this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
+            this->init3DCoordinates(newLandmarks);
+            this->addNewLandmarks(newLandmarks);
+
+            this->update3DCoordinate(landmarks);
+
+            flag = 1;
+            Image_t0_L = cv_ptr_left->image.clone();
+            Image_t0_R = cv_ptr_right->image.clone();
+        }
+        else
+        {
+            double t = cv_ptr_left->header.stamp.toSec();
+
+            cout<<setprecision(14)<<t<<endl;
+
+            Image_t1_L = cv_ptr_left->image.clone();
+            Image_t1_R = cv_ptr_right->image.clone();
+
+            vector<Point3f> pntset_0;
+            vector<Point2f> lm_t1_image_left;
+            
+            
+            this->TrackLandmarks(Image_t0_L,Image_t1_L);
+
+            this->matchStereoFeatures(landmarks,Image_t1_L,Image_t1_R);
+
+            for (const auto & lm : landmarks)
+            {
+                pntset_0.emplace_back(lm.p_t_bff);
+                lm_t1_image_left.emplace_back(lm.camcoor_left);
+            }
+
+            vector<Point2f> newFeatures = this->detectNewFeatures(Image_t1_L);
+            vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
+            this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
+            this->init3DCoordinates(newLandmarks);
+            this->addNewLandmarks(newLandmarks);
+            this->update3DCoordinate(landmarks);
+
+            Rotation << 1,0,0,0,1,0,0,0,1;
+            Translation << 0,0,0;
+
+            Mat rvec, tvec;
+
+            solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.98999, noArray(), cv::SOLVEPNP_EPNP);
+            cv::Mat R_inbuilt;
+            cv::Rodrigues(rvec, R_inbuilt);
+            Eigen::Matrix3d r_mat;
+            Eigen::MatrixXd t_mat;
+            cv2eigen(tvec,t_mat);
+            cv::cv2eigen(R_inbuilt, r_mat);
+            Eigen::Vector3d t_1;
+            t_1 = -r_mat.transpose()*t_mat;
+
+            
+            
+            Rotation = r_mat.transpose();
+            Translation = t_1;
+
+            for (int iteration_1 = 0; iteration_1 < 6; iteration_1++)
+            {
+                int iter4 = reprojection_gauss_newton(lm_t1_image_left,pntset_0,Rotation,Translation);
+            }
+
+            Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
+            Translation << -Translation;
+
+            Eigen::Matrix4d tfmat = Eigen::Matrix4d::Identity();
+            tfmat.block<3,3>(0,0) << Rotation;
+            tfmat.block<3,1>(0,3) << Translation;
+
+            Save_Matrix(tfmat, "/home/shawnge/euroc_test/trajec.txt");
+            Save_t(t,"/home/shawnge/euroc_test/time.txt");
+
+
+
+
+
+            Image_t0_L = cv_ptr_left->image.clone();
+            Image_t0_R = cv_ptr_right->image.clone();
+
+            
+        }
+        
+    }
 
     void ProcessImage(const sensor_msgs::ImageConstPtr& msg_left, const sensor_msgs::ImageConstPtr& msg_right)
     {
@@ -626,28 +975,28 @@ public:
 
             
             
-            Mat image = Image_t1_L.clone();
-        Mat image_1; 
-        cvtColor(image,image_1, COLOR_GRAY2RGB);
-        Mat image2 = Image_t1_R.clone();
-        Mat image_2;
-        cvtColor(image2,image_2, COLOR_GRAY2RGB);
-        auto length = landmarksLeft_t0.size();
-        auto length2 = landmarksRight_t0.size();
-        for (int i = 0; i < length-1; i++)
-        {
-            circle(image_1, landmarksLeft_t1[i], 5, Scalar(0,0,255));
-            line(image_1, landmarksLeft_t0[i], landmarksLeft_t1[i],Scalar(0,255,0));
-        }
-        for (int i = 0; i < length2-1; i++)
-        {
-            circle(image_2, landmarksRight_t1[i], 5, Scalar(0,0,255));
-            line(image_2, landmarksRight_t0[i], landmarksRight_t1[i],Scalar(0,255,0));
-        }
+        //     Mat image = Image_t1_L.clone();
+        // Mat image_1; 
+        // cvtColor(image,image_1, COLOR_GRAY2RGB);
+        // Mat image2 = Image_t1_R.clone();
+        // Mat image_2;
+        // cvtColor(image2,image_2, COLOR_GRAY2RGB);
+        // auto length = landmarksLeft_t0.size();
+        // auto length2 = landmarksRight_t0.size();
+        // for (int i = 0; i < length-1; i++)
+        // {
+        //     circle(image_1, landmarksLeft_t1[i], 5, Scalar(0,0,255));
+        //     line(image_1, landmarksLeft_t0[i], landmarksLeft_t1[i],Scalar(0,255,0));
+        // }
+        // for (int i = 0; i < length2-1; i++)
+        // {
+        //     circle(image_2, landmarksRight_t1[i], 5, Scalar(0,0,255));
+        //     line(image_2, landmarksRight_t0[i], landmarksRight_t1[i],Scalar(0,255,0));
+        // }
         
 
-        imwrite("/home/shawnge/euroc_test1/left.png",image_1);
-        imwrite("/home/shawnge/euroc_test1/right.png",image_2);
+        // imwrite("/home/shawnge/euroc_test1/left.png",image_1);
+        // imwrite("/home/shawnge/euroc_test1/right.png",image_2);
 
 
         vector<Point2f> lm_l_0, lm_l_1, lm_r_0, lm_r_1, lm_t0_image_left, lm_t0_image_left_rej;
@@ -673,15 +1022,15 @@ public:
         Triangulation_Euroc(lm_l_0, lm_r_0, pntset_0);
         Triangulation_Euroc(lm_r_0, lm_r_1, pntset_1);
 
-        for (int i = 0; i < pntset_0.size(); i++)
-        {
-            if (pntset_0[i].z<6 && pntset_1[i].z<6)
-            {
-                pntset_0_rej.emplace_back(pntset_0[i]);
-                pntset_1_rej.emplace_back(pntset_1[i]);
-                lm_t0_image_left_rej.emplace_back(lm_t0_image_left[i]);
-            }
-        }
+        // for (int i = 0; i < pntset_0.size(); i++)
+        // {
+        //     if (pntset_0[i].z<6 && pntset_1[i].z<6)
+        //     {
+        //         pntset_0_rej.emplace_back(pntset_0[i]);
+        //         pntset_1_rej.emplace_back(pntset_1[i]);
+        //         lm_t0_image_left_rej.emplace_back(lm_t0_image_left[i]);
+        //     }
+        // }
         
 
         Rotation << 1,0,0,0,1,0,0,0,1;
@@ -766,7 +1115,8 @@ int main(int argc, char** argv)
         
         if (left_ready*right_ready) 
         {
-            sc.ProcessImage(imgPtr_Left, imgPtr_Right);
+            // sc.ProcessImage(imgPtr_Left, imgPtr_Right);
+            sc.ProcessImage_EqF(imgPtr_Left, imgPtr_Right);
             left_ready = 0;
             right_ready = 0;
         }
