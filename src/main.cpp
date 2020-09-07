@@ -82,9 +82,9 @@ int main(int argc, char** argv)
             }
 
             double t = cv_ptr_left->header.stamp.toSec();
-            // sc.ProcessImage_EqF(cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+            
             Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
-            sf.integrateEquations(landmarks, velocity);
+            // sf.integrateEquations(landmarks, velocity);
 
 
             left_ready = false;

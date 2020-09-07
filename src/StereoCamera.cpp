@@ -435,5 +435,8 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     Save_Matrix(tfmat, "trajec.txt");
     Save_t(t,"time.txt");
 
+    Image_t0_L = img_left.clone();
+    Image_t0_R = img_right.clone();
+
     return tfmat;
 }
