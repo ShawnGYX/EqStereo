@@ -238,6 +238,6 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
 
     Eigen::Matrix4d pose = P_init*X_rb;
 
-    Save_Matrix(pose, "/home/shawnge/euroc_test/trajec_eqf.txt");
+    // Save_Matrix(pose, "/home/shawnge/euroc_test/trajec_eqf.txt");
     
 }
