@@ -5,6 +5,7 @@
 #include "Landmark.h"
 #include "sensor_msgs/image_encodings.h"
 #include "sensor_msgs/Image.h"
+// TODO: Remove ROS dependency from the stereocamera class. Images should be converted to opencv first.
 #include <vector>
 
 using namespace cv;
