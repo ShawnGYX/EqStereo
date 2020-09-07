@@ -109,15 +109,7 @@ public:
 
 
     // Old feature tracking functions
-
-    vector<Point2f> DetectNewFeatures(const Mat &image);
-    vector<Point2f> TrackFeatures_Time(const Mat &image,const Mat &image_new, const vector<Point2f> &lm);
-    vector<Point2f> TrackFeatures_LR(const Mat &image_left, const Mat &image_right, const vector<Point2f> &landmarksleft);
-    void Triangulation_Euroc(const vector<Point2f> &pl, const vector<Point2f> &pr, vector<Point3f> &p_3d);
-    vector<int> GenerateDiffNumber(int min,int max,int num);
-    void Save_Point(vector<Point3f>& vs, const string file);
     void Save_t(double t, const string file);
-
     void Save_Matrix(Eigen::Matrix4d tfmat, const string file);
 
     int reprojection_gauss_newton(
@@ -126,6 +118,7 @@ public:
 	    Eigen::Matrix3d&            rotation,
 	    Eigen::Vector3d&            translation
     );
+    
     // EqF functions
     void update_vel(const Eigen::Matrix4d vel);
     Eigen::MatrixXd compute_c();
