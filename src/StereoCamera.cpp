@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 typedef Eigen::Vector3d             vec3d;
 typedef Eigen::Matrix3d             mat3d;
@@ -33,7 +34,7 @@ Eigen::Matrix3d skew(const Eigen::Vector3d& x)
 // Velocity estimation functions
 
 
-void StereoCamera::TrackLandmarks(const Mat &image_old, const Mat &image_new)
+void StereoCamera::TrackLandmarks(vector<Landmark>& landmarks, const Mat &image_old, const Mat &image_new)
 {
     if (landmarks.empty()) return;
 
@@ -99,12 +100,11 @@ vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures,
     return newfeatures;
 }
 
-vector<Point2f> StereoCamera::detectNewFeatures(const Mat &image) const
+vector<Point2f> StereoCamera::detectNewFeatures(const vector<Landmark>& oldLandmarks, const Mat &image) const
 {
     vector<Point2f> proposedfeatures;
     goodFeaturesToTrack(image,proposedfeatures,maxFeatures,minHarrisQuality,featureDist);
-
-    vector<Point2f> newFeatures = removeDuplicateFeatures(proposedfeatures, landmarks, featureDist);
+    vector<Point2f> newFeatures = removeDuplicateFeatures(proposedfeatures, oldLandmarks, featureDist);
 
     return newFeatures;
 }
@@ -582,6 +582,64 @@ void StereoCamera::update_innovation(const Innov &innovation)
 
 // Processing image
 
+Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const Mat& img_left, const Mat& img_right, const double& t) {
+
+    // Estimate the velocity by tracking landmarks
+    cout<<setprecision(14)<<t<<endl;
+
+    // Track landmarks to the new images
+    Image_t1_L = img_left;
+    Image_t1_R = img_right;    
+    this->TrackLandmarks(landmarks, Image_t0_L,Image_t1_L);
+    this->matchStereoFeatures(landmarks,Image_t1_L,Image_t1_R);
+
+
+    // Collect data for velocity estimation
+    vector<Point3f> pntset_0(landmarks.size());
+    vector<Point2f> lm_t1_image_left(landmarks.size());
+    transform(landmarks.begin(), landmarks.end(), pntset_0.begin(), [](const Landmark& lm) {return lm.p_t_bff; });
+    transform(landmarks.begin(), landmarks.end(), lm_t1_image_left.begin(), [](const Landmark& lm) {return lm.camcoor_left; });
+
+    // Create new landmarks
+    vector<Point2f> newFeatures = this->detectNewFeatures(landmarks, Image_t1_L);
+    vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
+    this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
+    this->init3DCoordinates(newLandmarks);
+    this->addNewLandmarks(newLandmarks);
+    this->update3DCoordinate(landmarks);
+
+    // Estimate rotation and translation
+    Mat rvec, tvec;
+    solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.98999, noArray(), cv::SOLVEPNP_EPNP);
+    cv::Mat R_inbuilt;
+    cv::Rodrigues(rvec, R_inbuilt);
+    Eigen::Matrix3d r_mat;
+    Eigen::MatrixXd t_mat;
+    cv2eigen(tvec,t_mat);
+    cv2eigen(R_inbuilt, r_mat);
+    
+    Rotation = r_mat.transpose();
+    Translation = -r_mat.transpose()*t_mat;
+
+    for (int iteration_1 = 0; iteration_1 < 6; iteration_1++)
+    {
+        int iter4 = reprojection_gauss_newton(lm_t1_image_left,pntset_0,Rotation,Translation);
+    }
+
+    // TODO: What is going on with rotation here?
+    Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
+    Translation << -Translation;
+
+    Eigen::Matrix4d tfmat = Eigen::Matrix4d::Identity();
+    tfmat.block<3,3>(0,0) << Rotation;
+    tfmat.block<3,1>(0,3) << Translation;
+
+    Save_Matrix(tfmat, "/home/shawnge/euroc_test/trajec.txt");
+    Save_t(t,"/home/shawnge/euroc_test/time.txt");
+
+    return tfmat;
+}
+
 void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, const double& t)
 {
 
@@ -590,7 +648,7 @@ void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, c
     {
         Image_t1_L = img_left;
         Image_t1_R = img_right;
-        vector<Point2f> newFeatures = this->detectNewFeatures(Image_t1_L);
+        vector<Point2f> newFeatures = this->detectNewFeatures(landmarks, Image_t1_L);
         vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
         this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
         this->init3DCoordinates(newLandmarks);
@@ -614,7 +672,7 @@ void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, c
         vector<Point2f> lm_t1_image_left;
         
         
-        this->TrackLandmarks(Image_t0_L,Image_t1_L);
+        this->TrackLandmarks(landmarks, Image_t0_L,Image_t1_L);
 
         this->matchStereoFeatures(landmarks,Image_t1_L,Image_t1_R);
 
@@ -624,7 +682,7 @@ void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, c
             lm_t1_image_left.emplace_back(lm.camcoor_left);
         }
 
-        vector<Point2f> newFeatures = this->detectNewFeatures(Image_t1_L);
+        vector<Point2f> newFeatures = this->detectNewFeatures(landmarks, Image_t1_L);
         vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
         this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
         this->init3DCoordinates(newLandmarks);

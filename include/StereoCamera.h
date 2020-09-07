@@ -10,11 +10,8 @@ using namespace std;
 
 struct Innov
 {
-    
-    Eigen::Matrix4d Del;
-    
+    Eigen::Matrix4d Del;   
     Eigen::MatrixXd del;
-
 };
 
 Eigen::Matrix3d skew(const Eigen::Vector3d& x);
@@ -91,8 +88,8 @@ public:
     // Velocity estimation functions
 
 
-    void TrackLandmarks(const Mat &image_old, const Mat &image_new);
-    [[nodiscard]] vector<Point2f> detectNewFeatures(const Mat &image) const;
+    void TrackLandmarks(vector<Landmark>& landmarks, const Mat &image_old, const Mat &image_new);
+    [[nodiscard]] vector<Point2f> detectNewFeatures(const vector<Landmark>& oldLandmarks, const Mat &image) const;
     [[nodiscard]] vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures) const;
     void matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right) const;
 
@@ -112,6 +109,9 @@ public:
 	    Eigen::Matrix3d&            rotation,
 	    Eigen::Vector3d&            translation
     );
+
+    // Main Stereo Camera
+    Eigen::Matrix4d processImages(vector<Landmark>& landmarks, const Mat& img_left, const Mat& img_right, const double& t);
 
     // EqF functions
     void update_vel(const Eigen::Matrix4d vel);
