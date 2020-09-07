@@ -131,6 +131,8 @@ include_directories(
 add_library(StereoLib
   include/StereoCamera.h
   src/StereoCamera.cpp
+  include/StereoFilter.h
+  src/StereoFilter.cpp
 )
 
 ## Add cmake target dependencies of the library
