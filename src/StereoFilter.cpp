@@ -1,5 +1,8 @@
 #include "StereoFilter.h"
 #include "eigen3/unsupported/Eigen/MatrixFunctions"
+#include "fstream"
+
+void Save_Matrix(Eigen::Matrix4d tfmat, const string file);
 
 void StereoFilter::update_vel(const Eigen::Matrix4d vel)
 {
@@ -235,6 +238,14 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
 
     Eigen::Matrix4d pose = P_init*X_rb;
 
-    // Save_Matrix(pose, "/home/shawnge/euroc_test/trajec_eqf.txt");
+    Save_Matrix(pose, "trajec_eqf.txt");
     
 }
+
+void Save_Matrix(Eigen::Matrix4d tfmat, const string file)
+{
+    ofstream trajectory;
+    trajectory.open(file, ios::app);
+    trajectory<<tfmat<<"\n";
+    trajectory.close();
+}   

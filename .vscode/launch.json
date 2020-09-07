@@ -23,5 +23,25 @@
                 }
             ]
         }
+
+        {
+            "name": "(gdb) stereo_2",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Stereo",
+            "args": ["/home/pieter/Datasets/MH_01_easy.bag"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
     ]
 }

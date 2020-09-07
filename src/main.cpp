@@ -30,8 +30,13 @@ int main(int argc, char** argv)
     string rosbagFilename, rosbagTopic_1, rosbagTopic_2;
 
     rosbagFilename = argv[1];
-    rosbagTopic_1 = argv[2];
-    rosbagTopic_2 = argv[3];
+    if (argc <= 2) {
+        rosbagTopic_1 = "/cam0/image_raw";
+        rosbagTopic_2 = "/cam1/image_raw";
+    } else {
+        rosbagTopic_1 = argv[2];
+        rosbagTopic_2 = argv[3];
+    }
 
     rosbag::Bag mybag;
     mybag.open(rosbagFilename);

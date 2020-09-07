@@ -7,17 +7,17 @@ using namespace cv;
 
 struct Landmark 
 {
+    // Measured quantities
     Point2f camcoor_left_distorted;
     Point2f camcoor_right_distorted;
     Point2f camcoor_left;
     Point2f camcoor_right;
     Point2f camcoor_left_norm;
     Point2f camcoor_right_norm;
-
-    Eigen::Vector3d p_0;
     Point3f p_t_bff;
 
-
+    // EqF related
+    Eigen::Vector3d p_0;
     Eigen::Vector3d X_lm;
     
     Eigen::Vector2d camcoor_left_hat;

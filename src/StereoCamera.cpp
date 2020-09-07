@@ -374,14 +374,15 @@ int StereoCamera::reprojection_gauss_newton(
 
 // Processing image
 
-Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const Eigen::Matrix4d& currentPose, const Mat& img_left, const Mat& img_right, const double& t) {
+Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const Eigen::Matrix4d& currentPose,
+                                            const Mat& img_left, const Mat& img_right, const double& t) {
 
     // Estimate the velocity by tracking landmarks
     cout<<setprecision(14)<<t<<endl;
 
     // Track landmarks to the new images
     Image_t1_L = img_left;
-    Image_t1_R = img_right;    
+    Image_t1_R = img_right;
     this->TrackLandmarks(landmarks, Image_t0_L,Image_t1_L);
     this->matchStereoFeatures(landmarks,Image_t1_L,Image_t1_R);
 
@@ -400,6 +401,8 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     this->update3DCoordinate(landmarks);
 
     if (pntset_0.empty()) {
+        Image_t0_L = img_left.clone();
+        Image_t0_R = img_right.clone();
         return Eigen::Matrix4d::Identity();
     }
 
@@ -429,8 +432,8 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     tfmat.block<3,3>(0,0) << Rotation;
     tfmat.block<3,1>(0,3) << Translation;
 
-    Save_Matrix(tfmat, "/home/shawnge/euroc_test/trajec.txt");
-    Save_t(t,"/home/shawnge/euroc_test/time.txt");
+    Save_Matrix(tfmat, "trajec.txt");
+    Save_t(t,"time.txt");
 
     return tfmat;
 }
