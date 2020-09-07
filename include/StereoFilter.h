@@ -59,5 +59,8 @@ public:
     void update_Sigma(MatrixXd &C_mat, MatrixXd &Sigma, vector<Landmark>& landmarks);
     Innov Compute_innovation(const MatrixXd &C_mat, const MatrixXd &err, const MatrixXd &Sigma, vector<Landmark>& landmarks);
     void update_innovation(const Innov &innovation, vector<Landmark>& landmarks);
+    
     void integrateEquations(vector<Landmark>& landmarks, const Matrix4d& velocity);
+
+    Matrix4d getPose() { return P_init * X_rb; }
 };
