@@ -208,10 +208,7 @@ void StereoFilter::update_innovation(const Innov &innovation, vector<Landmark>& 
 
 
 
-
-
 // Processing image
-
 void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4d& velocity)
 {
 

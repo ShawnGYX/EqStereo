@@ -6,11 +6,11 @@
 #include "opencv2/calib3d.hpp"
 #include "opencv2/core/eigen.hpp"
 
-#include <cv_bridge/cv_bridge.h>
-
 #include "eigen3/unsupported/Eigen/MatrixFunctions"
 
 #include <fstream>
+#include <iostream>
+#include <iomanip>
 
 typedef Eigen::Vector3d             vec3d;
 typedef Eigen::Matrix3d             mat3d;
@@ -582,26 +582,14 @@ void StereoCamera::update_innovation(const Innov &innovation)
 
 // Processing image
 
-void StereoCamera::ProcessImage_EqF(const sensor_msgs::ImageConstPtr& msg_left, const sensor_msgs::ImageConstPtr& msg_right)
+void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, const double& t)
 {
-    cv_bridge::CvImagePtr cv_ptr_left;
-    cv_bridge::CvImagePtr cv_ptr_right;
-    try
-    {
-        cv_ptr_left = cv_bridge::toCvCopy(msg_left, sensor_msgs::image_encodings::MONO8);
-        cv_ptr_right = cv_bridge::toCvCopy(msg_right, sensor_msgs::image_encodings::MONO8);
-    }
-    catch(cv_bridge::Exception& e)
-    {
-        // throw(Exception("cv_bridge exception: %s", e.what()));
-        return;
-    }
 
 
     if (!flag)
     {
-        Image_t1_L = cv_ptr_left->image.clone();
-        Image_t1_R = cv_ptr_right->image.clone();
+        Image_t1_L = img_left;
+        Image_t1_R = img_right;
         vector<Point2f> newFeatures = this->detectNewFeatures(Image_t1_L);
         vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
         this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
@@ -611,17 +599,16 @@ void StereoCamera::ProcessImage_EqF(const sensor_msgs::ImageConstPtr& msg_left, 
         this->update3DCoordinate(landmarks);
 
         flag = 1;
-        Image_t0_L = cv_ptr_left->image.clone();
-        Image_t0_R = cv_ptr_right->image.clone();
+        Image_t0_L = img_left.clone();
+        Image_t0_R = img_right.clone();
     }
     else
     {
-        double t = cv_ptr_left->header.stamp.toSec();
 
         cout<<setprecision(14)<<t<<endl;
 
-        Image_t1_L = cv_ptr_left->image.clone();
-        Image_t1_R = cv_ptr_right->image.clone();
+        Image_t1_L = img_left;
+        Image_t1_R = img_right;
 
         vector<Point3f> pntset_0;
         vector<Point2f> lm_t1_image_left;
@@ -711,8 +698,8 @@ void StereoCamera::ProcessImage_EqF(const sensor_msgs::ImageConstPtr& msg_left, 
         pose = P_init*X_rb;
 
         Save_Matrix(pose, "/home/shawnge/euroc_test/trajec_eqf.txt");
-        Image_t0_L = cv_ptr_left->image.clone();
-        Image_t0_R = cv_ptr_right->image.clone();
+        Image_t0_L = img_left.clone();
+        Image_t0_R = img_right.clone();
 
         
     }

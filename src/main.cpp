@@ -7,6 +7,7 @@
 #include <Eigen/Eigen>
 
 #include "StereoCamera.h"
+#include <cv_bridge/cv_bridge.h>
 
 
 #include <opencv2/stereo/stereo.hpp>
@@ -36,8 +37,8 @@ int main(int argc, char** argv)
 
     StereoCamera sc;
 
-    int left_ready = 0;
-    int right_ready = 0;
+    bool left_ready = false;
+    bool right_ready = false;
     sensor_msgs::Image::ConstPtr imgPtr_Left;
     sensor_msgs::Image::ConstPtr imgPtr_Right;
     for (rosbag::MessageInstance const m: rosbag::View(mybag))
@@ -47,21 +48,36 @@ int main(int argc, char** argv)
         if (m.getTopic() == rosbagTopic_1)
         {
             imgPtr_Left = m.instantiate<sensor_msgs::Image>();
-            left_ready = 1;
+            left_ready = true;
         }
 
         if (m.getTopic() == rosbagTopic_2)
         {
             imgPtr_Right = m.instantiate<sensor_msgs::Image>();
-            right_ready = 1;
+            right_ready = true;
         }
         
-        if (left_ready*right_ready) 
+        if (left_ready & right_ready) 
         {
             // sc.ProcessImage(imgPtr_Left, imgPtr_Right);
-            sc.ProcessImage_EqF(imgPtr_Left, imgPtr_Right);
-            left_ready = 0;
-            right_ready = 0;
+            cv_bridge::CvImagePtr cv_ptr_left;
+            cv_bridge::CvImagePtr cv_ptr_right;
+            try
+            {
+                cv_ptr_left = cv_bridge::toCvCopy(imgPtr_Left, sensor_msgs::image_encodings::MONO8);
+                cv_ptr_right = cv_bridge::toCvCopy(imgPtr_Right, sensor_msgs::image_encodings::MONO8);
+            }
+            catch(cv_bridge::Exception& e)
+            {
+                // throw(Exception("cv_bridge exception: %s", e.what()));
+                return 1;
+            }
+
+            double t = cv_ptr_left->header.stamp.toSec();
+            sc.ProcessImage_EqF(cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+
+            left_ready = false;
+            right_ready = false;
         }
 
     }

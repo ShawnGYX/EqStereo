@@ -3,9 +3,6 @@
 #include "Eigen/Eigen"
 #include "opencv2/core/core.hpp"
 #include "Landmark.h"
-#include "sensor_msgs/image_encodings.h"
-#include "sensor_msgs/Image.h"
-// TODO: Remove ROS dependency from the stereocamera class. Images should be converted to opencv first.
 #include <vector>
 
 using namespace cv;
@@ -124,5 +121,5 @@ public:
     void update_Sigma(Eigen::MatrixXd &C_mat, Eigen::MatrixXd &Sigma);
     Innov Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err, const Eigen::MatrixXd &Sigma);
     void update_innovation(const Innov &innovation);
-    void ProcessImage_EqF(const sensor_msgs::ImageConstPtr& msg_left, const sensor_msgs::ImageConstPtr& msg_right);
+    void ProcessImage_EqF(const Mat& img_left, const Mat& img_right, const double& t);
 };
