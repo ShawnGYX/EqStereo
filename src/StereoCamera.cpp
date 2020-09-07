@@ -73,14 +73,14 @@ void StereoCamera::TrackLandmarks(const Mat &image_old, const Mat &image_new)
 
 
 
-vector<Point2f> StereoCamera::removeDuplicateFeatures(const vector<Point2f> &proposedFeatures) const
+vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures, const vector<Landmark>& oldLandmarks, const double& featureDist)
 {
     vector<Point2f> newfeatures;
 
     for (const auto & proposed : proposedFeatures)
     {
         bool useFlag = true;
-        for ( const auto & feature : this->landmarks)
+        for ( const auto & feature : oldLandmarks)
         {
             if (norm(proposed - feature.camcoor_left_distorted) < featureDist)
             {
@@ -104,7 +104,7 @@ vector<Point2f> StereoCamera::detectNewFeatures(const Mat &image) const
     vector<Point2f> proposedfeatures;
     goodFeaturesToTrack(image,proposedfeatures,maxFeatures,minHarrisQuality,featureDist);
 
-    vector<Point2f> newFeatures = this->removeDuplicateFeatures(proposedfeatures);
+    vector<Point2f> newFeatures = removeDuplicateFeatures(proposedfeatures, landmarks, featureDist);
 
     return newFeatures;
 }

@@ -21,7 +21,7 @@ struct Innov
 };
 
 Eigen::Matrix3d skew(const Eigen::Vector3d& x);
-
+[[nodiscard]] vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures, const vector<Landmark>& oldLandmarks, const double& featureDist);
 
 
 class StereoCamera
@@ -95,7 +95,6 @@ public:
 
 
     void TrackLandmarks(const Mat &image_old, const Mat &image_new);
-    [[nodiscard]] vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures) const;
     [[nodiscard]] vector<Point2f> detectNewFeatures(const Mat &image) const;
     [[nodiscard]] vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures) const;
     void matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right) const;
