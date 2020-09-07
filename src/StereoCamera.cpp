@@ -248,7 +248,7 @@ void StereoCamera::update3DCoordinate(vector<Landmark> &newLandmarks) const
 
 }
 
-void StereoCamera::addNewLandmarks(const vector<Landmark>& newlandmarks)
+void StereoCamera::addNewLandmarks(vector<Landmark>& landmarks, const vector<Landmark>& newlandmarks)
 {
     for (auto & lm : newlandmarks)
     {
@@ -593,7 +593,6 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const M
     this->TrackLandmarks(landmarks, Image_t0_L,Image_t1_L);
     this->matchStereoFeatures(landmarks,Image_t1_L,Image_t1_R);
 
-
     // Collect data for velocity estimation
     vector<Point3f> pntset_0(landmarks.size());
     vector<Point2f> lm_t1_image_left(landmarks.size());
@@ -605,8 +604,12 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const M
     vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
     this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
     this->init3DCoordinates(newLandmarks);
-    this->addNewLandmarks(newLandmarks);
+    this->addNewLandmarks(landmarks, newLandmarks);
     this->update3DCoordinate(landmarks);
+
+    if (pntset_0.empty()) {
+        return Eigen::Matrix4d::Identity();
+    }
 
     // Estimate rotation and translation
     Mat rvec, tvec;
@@ -652,7 +655,7 @@ void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, c
         vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
         this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
         this->init3DCoordinates(newLandmarks);
-        this->addNewLandmarks(newLandmarks);
+        this->addNewLandmarks(landmarks, newLandmarks);
 
         this->update3DCoordinate(landmarks);
 
@@ -686,7 +689,7 @@ void StereoCamera::ProcessImage_EqF(const Mat& img_left, const Mat& img_right, c
         vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
         this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
         this->init3DCoordinates(newLandmarks);
-        this->addNewLandmarks(newLandmarks);
+        this->addNewLandmarks(landmarks, newLandmarks);
         this->update3DCoordinate(landmarks);
 
         Rotation << 1,0,0,0,1,0,0,0,1;

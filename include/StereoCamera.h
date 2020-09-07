@@ -3,16 +3,11 @@
 #include "Eigen/Eigen"
 #include "opencv2/core/core.hpp"
 #include "Landmark.h"
+#include "Innov.h"
 #include <vector>
 
 using namespace cv;
 using namespace std;
-
-struct Innov
-{
-    Eigen::Matrix4d Del;   
-    Eigen::MatrixXd del;
-};
 
 Eigen::Matrix3d skew(const Eigen::Vector3d& x);
 [[nodiscard]] vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures, const vector<Landmark>& oldLandmarks, const double& featureDist);
@@ -96,7 +91,7 @@ public:
 
     void init3DCoordinates(vector<Landmark> &newLandmarks) const;
     void update3DCoordinate(vector<Landmark> &newLandmarks) const;
-    void addNewLandmarks(const vector<Landmark>& newlandmarks);
+    void addNewLandmarks(vector<Landmark>& landmarks, const vector<Landmark>& newlandmarks);
 
 
     // Old feature tracking functions

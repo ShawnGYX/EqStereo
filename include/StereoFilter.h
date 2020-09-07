@@ -2,23 +2,13 @@
 
 #include "Eigen/Eigen"
 #include "Landmark.h"
+#include "Innov.h"
 #include <vector>
 
 using namespace Eigen;
 using namespace std;
 
-struct Innov
-{
-    
-    Matrix4d Del;
-    
-    MatrixXd del;
-
-};
-
 Matrix3d skew(const Vector3d& x);
-
-
 
 class StereoFilter
 {

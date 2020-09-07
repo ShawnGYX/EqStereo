@@ -7,6 +7,9 @@
 #include <Eigen/Eigen>
 
 #include "StereoCamera.h"
+#include "Landmark.h"
+#include "StereoFilter.h"
+
 #include <cv_bridge/cv_bridge.h>
 
 
@@ -17,8 +20,6 @@
 #include <fstream>
 #include <iomanip>
 #include <typeinfo>
-
-#include "Landmark.h"
 
 using namespace std;
 using namespace cv;
@@ -36,6 +37,8 @@ int main(int argc, char** argv)
     mybag.open(rosbagFilename);
 
     StereoCamera sc;
+    StereoFilter sf;
+    vector<Landmark> landmarks;
 
     bool left_ready = false;
     bool right_ready = false;
@@ -74,7 +77,10 @@ int main(int argc, char** argv)
             }
 
             double t = cv_ptr_left->header.stamp.toSec();
-            sc.ProcessImage_EqF(cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+            // sc.ProcessImage_EqF(cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+            Eigen::Matrix4d velocity = sc.processImages(landmarks, cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+            sf.integrateEquations(landmarks, velocity);
+
 
             left_ready = false;
             right_ready = false;
