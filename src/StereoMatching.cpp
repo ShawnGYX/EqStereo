@@ -23,10 +23,10 @@
 #include <iomanip>
 #include <typeinfo>
 
+#include "Landmark.h"
+
 using namespace std;
 using namespace cv;
-
-using colorVec = std::array<uchar, 3>;
 
 
 
@@ -44,27 +44,6 @@ struct Innov
     
     Eigen::MatrixXd del;
 
-};
-
-struct Landmark 
-{
-    Point2f camcoor_left_distorted;
-    Point2f camcoor_right_distorted;
-    Point2f camcoor_left;
-    Point2f camcoor_right;
-    Point2f camcoor_left_norm;
-    Point2f camcoor_right_norm;
-
-    Eigen::Vector3d p_0;
-    Point3f p_t_bff;
-
-
-    Eigen::Vector3d X_lm;
-    
-    Eigen::Vector2d camcoor_left_hat;
-    Eigen::Vector2d camcoor_right_hat;
-
-    Eigen::Matrix3d sig;
 };
 
 
@@ -224,7 +203,7 @@ public:
         return newFeatures;
     }
 
-    vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures)
+    [[nodiscard]] vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures)
     {
         vector<Landmark> newlandmarks;
         if (newFeatures.empty()) return newlandmarks;
@@ -249,6 +228,7 @@ public:
             newlandmarks.emplace_back(lm);
         }
         
+        return newlandmarks;
 
     }
 
