@@ -19,6 +19,8 @@ struct Innov
 
 };
 
+Eigen::Matrix3d skew(const Eigen::Vector3d& x);
+
 
 
 class StereoCamera
@@ -87,8 +89,6 @@ public:
 
 public:
 
-    Eigen::Matrix3d x_skew(const Eigen::Vector3d x);
-
 
     // Velocity estimation functions
 
@@ -97,20 +97,15 @@ public:
 
 
 
-    vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures);
-
-    vector<Point2f> detectNewFeatures(const Mat &image);
-
-    [[nodiscard]] vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures);
-
-    void matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right);
+    [[nodiscard]] vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures) const;
+    [[nodiscard]] vector<Point2f> detectNewFeatures(const Mat &image) const;
+    [[nodiscard]] vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures) const;
+    void matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right) const;
 
 
-    void init3DCoordinates (vector<Landmark> &newLandmarks);
-
-    void update3DCoordinate(vector<Landmark> &newLandmarks);
-
-    void addNewLandmarks(vector<Landmark> newlandmarks);
+    void init3DCoordinates(vector<Landmark> &newLandmarks) const;
+    void update3DCoordinate(vector<Landmark> &newLandmarks) const;
+    void addNewLandmarks(const vector<Landmark>& newlandmarks);
 
 
     // Old feature tracking functions

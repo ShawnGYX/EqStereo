@@ -19,7 +19,7 @@ typedef Eigen::Matrix<double, 6, 6> mat6d;
 typedef Eigen::Matrix<double, 3, 6> mat3x6d;
 typedef Eigen::Matrix<double, 2, 6> mat2x6d;
 
-Eigen::Matrix3d StereoCamera::x_skew(const Eigen::Vector3d x)
+Eigen::Matrix3d skew(const Eigen::Vector3d& x)
 {
     Eigen::Matrix3d x_s;
     x_s << 0.0,-x.x(),x.y(),
@@ -73,7 +73,7 @@ void StereoCamera::TrackLandmarks(const Mat &image_old, const Mat &image_new)
 
 
 
-vector<Point2f> StereoCamera::removeDuplicateFeatures(const vector<Point2f> &proposedFeatures)
+vector<Point2f> StereoCamera::removeDuplicateFeatures(const vector<Point2f> &proposedFeatures) const
 {
     vector<Point2f> newfeatures;
 
@@ -99,7 +99,7 @@ vector<Point2f> StereoCamera::removeDuplicateFeatures(const vector<Point2f> &pro
     return newfeatures;
 }
 
-vector<Point2f> StereoCamera::detectNewFeatures(const Mat &image)
+vector<Point2f> StereoCamera::detectNewFeatures(const Mat &image) const
 {
     vector<Point2f> proposedfeatures;
     goodFeaturesToTrack(image,proposedfeatures,maxFeatures,minHarrisQuality,featureDist);
@@ -109,7 +109,7 @@ vector<Point2f> StereoCamera::detectNewFeatures(const Mat &image)
     return newFeatures;
 }
 
-[[nodiscard]] vector<Landmark> StereoCamera::createNewLandmarks(const vector<Point2f> &newFeatures)
+[[nodiscard]] vector<Landmark> StereoCamera::createNewLandmarks(const vector<Point2f> &newFeatures) const
 {
     vector<Landmark> newlandmarks;
     if (newFeatures.empty()) return newlandmarks;
@@ -138,7 +138,7 @@ vector<Point2f> StereoCamera::detectNewFeatures(const Mat &image)
 
 }
 
-void StereoCamera::matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right)
+void StereoCamera::matchStereoFeatures(vector<Landmark> &proposedLandmarks, const Mat &image_left, const Mat &image_right) const
 {
     if (proposedLandmarks.empty()) return;
 
@@ -175,16 +175,14 @@ void StereoCamera::matchStereoFeatures(vector<Landmark> &proposedLandmarks, cons
 }
 
 
-void StereoCamera::init3DCoordinates (vector<Landmark> &newLandmarks)
+void StereoCamera::init3DCoordinates (vector<Landmark> &newLandmarks) const
 {
     
-    Eigen::Matrix4d Phat;
-    Phat = P_init*X_rb;
+    const Eigen::Matrix4d Phat = P_init*X_rb;
 
-    Eigen::Matrix4d R12 = XL.inverse()*XR;
-
-    Eigen::Matrix3d Rot = R12.block<3,3>(0,0);
-    Eigen::Vector3d Trans = R12.block<3,1>(0,3);
+    const Eigen::Matrix4d XLR = XL.inverse()*XR;
+    const Eigen::Matrix3d Rot = XLR.block<3,3>(0,0);
+    const Eigen::Vector3d Trans = XLR.block<3,1>(0,3);
 
     for (int i = 0; i < newLandmarks.size(); i++)
     {
@@ -214,7 +212,7 @@ void StereoCamera::init3DCoordinates (vector<Landmark> &newLandmarks)
 
 }
 
-void StereoCamera::update3DCoordinate(vector<Landmark> &newLandmarks)
+void StereoCamera::update3DCoordinate(vector<Landmark> &newLandmarks) const
 {
     Eigen::Matrix4d R12 = XL.inverse()*XR;
 
@@ -250,7 +248,7 @@ void StereoCamera::update3DCoordinate(vector<Landmark> &newLandmarks)
 
 }
 
-void StereoCamera::addNewLandmarks(vector<Landmark> newlandmarks)
+void StereoCamera::addNewLandmarks(const vector<Landmark>& newlandmarks)
 {
     for (auto & lm : newlandmarks)
     {
@@ -641,7 +639,7 @@ Innov StereoCamera::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen
         q_i = P_init.inverse()*pi_homo;
 
         Eigen::Matrix3d q_a;
-        q_a = x_skew(landmarks[i].X_lm+q_i.head(3));
+        q_a = skew(landmarks[i].X_lm+q_i.head(3));
 
         A.block<3,3>(3*(i),0) = q_a;
         A.block<3,3>(3*(i),3) = -1*Eigen::Matrix3d::Identity();
@@ -652,7 +650,7 @@ Innov StereoCamera::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen
     v = (A.transpose()*A).inverse()*A.transpose()*gamma;
 
     Eigen::Matrix3d v_skew;
-    v_skew = x_skew(v.head(3));
+    v_skew = skew(v.head(3));
 
     Eigen::Matrix4d Delta = Eigen::Matrix4d::Zero();
     Delta.block<3,3>(0,0) = v_skew;
