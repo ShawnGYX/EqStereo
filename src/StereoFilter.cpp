@@ -1,6 +1,7 @@
 #include "StereoFilter.h"
 #include "eigen3/unsupported/Eigen/MatrixFunctions"
 #include "fstream"
+#include <iostream>
 
 void Save_Matrix(Eigen::Matrix4d tfmat, const string file);
 
@@ -232,6 +233,8 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
     
     Eigen::MatrixXd Sigma = this->build_Sigma(landmarks);
     this->update_Sigma(C, Sigma, landmarks);
+
+    // cout << "Sigma eigs: " << Sigma.eigenvalues().transpose() << endl;
     
     Innov innovation = Compute_innovation(C,err,Sigma, landmarks);
     this->update_innovation(innovation, landmarks);
