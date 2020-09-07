@@ -160,7 +160,7 @@ add_library(StereoLib
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-add_executable(Stereo src/StereoMatching.cpp)
+add_executable(Stereo src/main.cpp)
 target_link_libraries(Stereo
 StereoLib
 ${catkin_LIBRARIES}

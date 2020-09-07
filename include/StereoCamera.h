@@ -94,9 +94,6 @@ public:
 
 
     void TrackLandmarks(const Mat &image_old, const Mat &image_new);
-
-
-
     [[nodiscard]] vector<Point2f> removeDuplicateFeatures(const vector<Point2f> &proposedFeatures) const;
     [[nodiscard]] vector<Point2f> detectNewFeatures(const Mat &image) const;
     [[nodiscard]] vector<Landmark> createNewLandmarks(const vector<Point2f> &newFeatures) const;
@@ -118,7 +115,7 @@ public:
 	    Eigen::Matrix3d&            rotation,
 	    Eigen::Vector3d&            translation
     );
-    
+
     // EqF functions
     void update_vel(const Eigen::Matrix4d vel);
     Eigen::MatrixXd compute_c();
