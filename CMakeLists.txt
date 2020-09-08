@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -125,7 +126,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${EIGEN_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIR}
 )
+
 
 ## Declare a C++ library
 add_library(StereoLib
@@ -167,5 +170,10 @@ target_link_libraries(Stereo
 StereoLib
 ${catkin_LIBRARIES}
 ${OpenCV_LIBS}
+${YAML_CPP_LIBRARIES}
 )
 
+set(CONFIG_FILE "config.yaml")
+get_filename_component(CONFIG_FILE ${CONFIG_FILE} ABSOLUTE)
+message("Config file is ${CONFIG_FILE}")
+add_compile_definitions(CONFIG_FILE="${CONFIG_FILE}")

@@ -4,6 +4,7 @@
 #include "Landmark.h"
 #include "Innov.h"
 #include <vector>
+#include "yaml-cpp/yaml.h"
 
 using namespace Eigen;
 using namespace std;
@@ -39,7 +40,6 @@ protected:
 
     double P_coef = 0.01;
     double Q_coef = 0.8;
-    double Sigma_coef = 5;
     double dt = 0.01;
 
 public:                              
@@ -49,6 +49,14 @@ public:
 
 
 public:
+
+    StereoFilter(){};
+    StereoFilter(const YAML::Node& configNode){
+            P_coef = configNode["P_coef"].as<double>();
+            Q_coef = configNode["Q_coef"].as<double>();
+            dt     = configNode["dt"].as<double>();
+    }
+
     // EqF functions
 
     void update_vel(const Matrix4d vel);

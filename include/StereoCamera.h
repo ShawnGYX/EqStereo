@@ -5,6 +5,7 @@
 #include "Landmark.h"
 #include "Innov.h"
 #include <vector>
+#include "yaml-cpp/yaml.h"
 
 using namespace cv;
 using namespace std;
@@ -29,6 +30,8 @@ public:
     double featureDist = 20;
     double minHarrisQuality = 0.1;
     double featureSearchThreshold = 1.0;
+    double outlierRejectionThresh = 1.5;
+    double Sigma_coef = 5;
     
     static constexpr float fx_left = 458.654;
     static constexpr float fy_left = 457.296;
@@ -57,16 +60,20 @@ public:
                                             -0.0253898008918, 0.0179005838253, 0.999517347078, 0.00786212447038,
                                             0.0, 0.0, 0.0, 1.0).finished();                                        
 
-    // EqF variables
-
-    double Sigma_coef = 5;
-    double dt = 0.05;
-
-
 public:
 
 
     // Velocity estimation functions
+
+    StereoCamera(){};
+    StereoCamera(const YAML::Node& configNode){
+        maxFeatures = configNode["maxFeatures"].as<int>();
+        featureDist = configNode["featureDist"].as<double>();
+        minHarrisQuality = configNode["minHarrisQuality"].as<double>();
+        featureSearchThreshold = configNode["featureSearchThreshold"].as<double>();
+        outlierRejectionThresh = configNode["outlierRejectionThresh"].as<double>();
+        Sigma_coef = configNode["Sigma_coef"].as<double>();
+    }
 
 
     void TrackLandmarks(vector<Landmark>& landmarks, const Mat &image_old, const Mat &image_new);

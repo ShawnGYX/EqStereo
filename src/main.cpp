@@ -6,6 +6,11 @@
 #include <math.h>
 #include <Eigen/Eigen>
 
+#include "yaml-cpp/yaml.h"
+#ifndef CONFIG_FILE
+#define CONFIG_FILE "config.yaml"
+#endif
+
 #include "StereoCamera.h"
 #include "Landmark.h"
 #include "StereoFilter.h"
@@ -41,8 +46,10 @@ int main(int argc, char** argv)
     rosbag::Bag mybag;
     mybag.open(rosbagFilename);
 
-    StereoCamera sc;
-    StereoFilter sf;
+    YAML::Node configNode = YAML::LoadFile(CONFIG_FILE);
+
+    StereoCamera sc(configNode);
+    StereoFilter sf(configNode);
     vector<Landmark> landmarks;
 
     bool left_ready = false;
