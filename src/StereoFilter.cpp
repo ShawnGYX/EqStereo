@@ -129,7 +129,7 @@ void StereoFilter::update_Sigma(Eigen::MatrixXd &C_mat, Eigen::MatrixXd &Sigma, 
 }
 
 
-Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err, const Eigen::MatrixXd &Sigma, vector<Landmark>& landmarks)
+Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err, const Eigen::MatrixXd &Sigma, vector<Landmark>& landmarks, bool isMoving)
 {
     
     int lm_num = landmarks.size();
@@ -185,8 +185,18 @@ Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen
 
 
     Innov Inn;
-    Inn.Del = Delta;
-    Inn.del = delta;
+
+    if (isMoving)
+    {
+        Inn.Del = Delta;
+        Inn.del = delta;
+    }else
+    {
+        Inn.Del = Eigen::Matrix4d::Zero();
+        Inn.del = gamma;
+    }
+    
+    
 
     return Inn;
 
@@ -199,6 +209,7 @@ void StereoFilter::update_innovation(const Innov &innovation, vector<Landmark>& 
     Eigen::MatrixXd delta = innovation.del;
     Eigen::Matrix4d Delta = innovation.Del;
 
+
     X_rb = (dt*Delta).exp()*X_rb;
 
     for (int i = 0; i < lm_num; i++)
@@ -207,6 +218,22 @@ void StereoFilter::update_innovation(const Innov &innovation, vector<Landmark>& 
         d << delta(3*i,0),delta(1+3*i,0),delta(2+3*i,0);
         landmarks[i].X_lm = landmarks[i].X_lm + dt * d + dt * Delta.block<3,3>(0,0) * landmarks[i].X_lm;
     }
+
+
+    // if (Delta.block<3,1>(0,3).norm()*dt>0.4)
+    // {
+    //     return;
+    // }
+    // else
+    // {
+    //     X_rb = (dt*Delta).exp()*X_rb;
+    //     for (int i = 0; i < lm_num; i++)
+    //     {
+    //         Eigen::Vector3d d;
+    //         d << delta(3*i,0),delta(1+3*i,0),delta(2+3*i,0);
+    //         landmarks[i].X_lm = landmarks[i].X_lm + dt * d + dt * Delta.block<3,3>(0,0) * landmarks[i].X_lm;
+    //     }
+    // }
     
 }
 
@@ -234,9 +261,14 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
     Eigen::MatrixXd Sigma = this->build_Sigma(landmarks);
     this->update_Sigma(C, Sigma, landmarks);
 
+    bool isMoving = true;
     // cout << "Sigma eigs: " << Sigma.eigenvalues().transpose() << endl;
+    if (velocity.block<3,1>(0,3).norm()<0.0004)
+    {
+        isMoving = false;
+    }
     
-    Innov innovation = Compute_innovation(C,err,Sigma, landmarks);
+    Innov innovation = Compute_innovation(C,err,Sigma, landmarks, isMoving);
     this->update_innovation(innovation, landmarks);
 
     Eigen::Matrix4d pose = P_init*X_rb;

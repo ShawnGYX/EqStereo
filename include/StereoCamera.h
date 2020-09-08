@@ -91,6 +91,8 @@ public:
 	    Eigen::Vector3d&            translation
     );
 
+    void OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d& vel, const vector<Point3f>& pnt_0, const vector<Point3f>& pnt_1);
+
     // Main Stereo Camera
     Eigen::Matrix4d processImages(vector<Landmark>& landmarks, const Eigen::Matrix4d& currentPose, const Mat& img_left, const Mat& img_right, const double& t);
 };

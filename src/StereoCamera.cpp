@@ -200,11 +200,15 @@ void StereoCamera::init3DCoordinates(vector<Landmark> &newLandmarks, const Eigen
         float x = z*newLandmarks[i].camcoor_left_norm.x;
         float y = z*newLandmarks[i].camcoor_left_norm.y;
         Eigen::Vector4d pnt_eigen(x,y,z,1);
-        
+        Point3f pnt;
+        pnt.x = x;
+        pnt.y = y;
+        pnt.z = z;
 
         Eigen::Vector4d pnt_global;
         pnt_global = currentPose*XL*pnt_eigen;           
         newLandmarks[i].p_0 = pnt_global.head(3);
+        newLandmarks[i].p_t_bff = pnt;
     
     }
 
@@ -366,9 +370,23 @@ int StereoCamera::reprojection_gauss_newton(
     return iter;
 }
 
+void StereoCamera::OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d& vel, const vector<Point3f>& pnt_0, const vector<Point3f>& pnt_1)
+{
+    for (long int i=landmarks.size()-1; i >= 0; --i) {
+        Eigen::Vector3d pnt_old;
+        Eigen::Vector4d pnt_new;
+        pnt_old<<pnt_0[i].x,pnt_0[i].y,pnt_0[i].z;
+        pnt_new<<pnt_1[i].x,pnt_1[i].y,pnt_1[i].z,1;
+        if ((pnt_old-(vel*pnt_new).head(3)).norm()>1.5) 
+        {
+            landmarks.erase(landmarks.begin() + i);
+            continue;
+        }
 
-// EqF functions
 
+    }
+
+}
 
 
 
@@ -397,8 +415,15 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     vector<Landmark> newLandmarks = this->createNewLandmarks(newFeatures);
     this->matchStereoFeatures(newLandmarks,Image_t1_L,Image_t1_R);
     this->init3DCoordinates(newLandmarks, currentPose);
-    this->addNewLandmarks(landmarks, newLandmarks);
     this->update3DCoordinate(landmarks);
+    
+    vector<Point3f> pntset_1(landmarks.size());
+    transform(landmarks.begin(), landmarks.end(), pntset_1.begin(), [](const Landmark& lm) {return lm.p_t_bff; });
+    
+    assert(pntset_0.size()==pntset_1.size());
+    
+    this->addNewLandmarks(landmarks, newLandmarks);
+    
 
     if (pntset_0.empty()) {
         Image_t0_L = img_left.clone();
@@ -434,6 +459,9 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
 
     Save_Matrix(tfmat, "trajec.txt");
     Save_t(t,"time.txt");
+
+    // Outlier rejection
+    this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
 
     Image_t0_L = img_left.clone();
     Image_t0_R = img_right.clone();
