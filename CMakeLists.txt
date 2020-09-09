@@ -136,6 +136,8 @@ add_library(StereoLib
   src/StereoCamera.cpp
   include/StereoFilter.h
   src/StereoFilter.cpp
+  include/SimWorld.h
+  src/SimWorld.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -172,6 +174,15 @@ ${catkin_LIBRARIES}
 ${OpenCV_LIBS}
 ${YAML_CPP_LIBRARIES}
 )
+
+add_executable(SimulatedStereo src/simulated.cpp)
+target_link_libraries(SimulatedStereo
+StereoLib
+${catkin_LIBRARIES}
+${OpenCV_LIBS}
+${YAML_CPP_LIBRARIES}
+)
+
 
 set(CONFIG_FILE "config.yaml")
 get_filename_component(CONFIG_FILE ${CONFIG_FILE} ABSOLUTE)
