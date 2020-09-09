@@ -10,6 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/Stereo",
             "args": ["/home/shawnge/stereodata/MH_01_easy.bag", "/cam0/image_raw", "/cam1/image_raw"],
+            // "args": ["/home/shawnge/Downloads/V1_01_easy.bag", "/cam0/image_raw", "/cam1/image_raw"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

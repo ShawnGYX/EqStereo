@@ -10,6 +10,26 @@ void StereoFilter::update_vel(const Eigen::Matrix4d vel)
     X_rb = X_rb * vel;
 }
 
+void StereoFilter::update_p0(vector<Landmark>& landmarks) const
+{
+    Eigen::Matrix4d Phat;
+    Phat = P_init*X_rb;
+    
+    for (int i = 0; i < landmarks.size(); i++)
+    {
+        if (landmarks[i].isNew)
+        {
+            Eigen::Vector4d pf;
+            pf << landmarks[i].p_t_bff.x,landmarks[i].p_t_bff.y,landmarks[i].p_t_bff.z,1;
+            Eigen::Vector4d p0;
+            p0 = Phat*XL*pf;
+            landmarks[i].p_0 = p0.head(3);
+            landmarks[i].isNew = false;
+        }
+    }
+    
+}
+
 Eigen::MatrixXd StereoFilter::compute_c(vector<Landmark>& landmarks) const
 {
     int lm_num = landmarks.size();
@@ -34,7 +54,8 @@ Eigen::MatrixXd StereoFilter::compute_c(vector<Landmark>& landmarks) const
                     0,fy_left/yi_hat_left.z(),-fy_left*yi_hat_left.y()/(yi_hat_left.z()*yi_hat_left.z());
 
         Eigen::Matrix<double,2,3> ci_left;
-        ci_left = de_left*XL.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).transpose();
+        ci_left = de_left*XL.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).inverse();
+        
 
         Eigen::Vector4d yi_hat_right;
         yi_hat_right = XR.inverse()*Phat.inverse()*pi_hat_homo;
@@ -44,7 +65,12 @@ Eigen::MatrixXd StereoFilter::compute_c(vector<Landmark>& landmarks) const
                     0,fy_right/yi_hat_right.z(),-fy_right*yi_hat_right.y()/(yi_hat_right.z()*yi_hat_right.z());
 
         Eigen::Matrix<double,2,3> ci_right;
-        ci_right = de_right*XR.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).transpose();
+        ci_right = de_right*XR.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).inverse();
+
+
+        // cout<<"Ci_left: "<<ci_left<<endl;
+        // cout<<"de_right: "<<de_right<<endl;
+
 
         C.block<2,3>(4*(i),3*(i)) = ci_left;
         C.block<2,3>(2+4*(i),3*(i)) = ci_right;
@@ -140,10 +166,14 @@ Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen
     Eigen::MatrixXd gamma;
     gamma = Sigma*C_mat.transpose()*s.inverse()*err;
 
+    Eigen::MatrixXd B = gamma;
+
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(3*lm_num,6);
 
     for (int i = 0; i < lm_num; i++)
-    {
+    {   
+        double weight = sqrt(landmarks[i].lifecycle+1);
+        weight = 1;
         Eigen::Vector4d q_i;
         Eigen::Vector4d pi_homo;
 
@@ -154,13 +184,15 @@ Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen
         Eigen::Matrix3d q_a;
         q_a = skew(landmarks[i].X_lm+q_i.head(3));
 
-        A.block<3,3>(3*(i),0) = q_a;
-        A.block<3,3>(3*(i),3) = -1*Eigen::Matrix3d::Identity();
+        A.block<3,3>(3*(i),0) = weight*q_a;
+        A.block<3,3>(3*(i),3) = -weight*Eigen::Matrix3d::Identity();
+
+        B.block<3,1>(3*i,0) = weight*gamma.block<3,1>(3*i,0);
 
     }
 
     Eigen::VectorXd v;
-    v = (A.transpose()*A).inverse()*A.transpose()*gamma;
+    v = (A.transpose()*A).inverse()*A.transpose()*B;
 
     Eigen::Matrix3d v_skew;
     v_skew = skew(v.head(3));
@@ -193,10 +225,11 @@ Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen
     }else
     {
         Inn.Del = Eigen::Matrix4d::Zero();
-        Inn.del = gamma;
+        Inn.del = 0*gamma;
     }
     
-    
+    // Inn.Del = Eigen::Matrix4d::Zero();
+    // Inn.del = gamma;
 
     return Inn;
 
@@ -254,6 +287,8 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
         this->update_vel(velocity);
     }
     
+    this->update_p0(landmarks);
+
     Eigen::MatrixXd C = compute_c(landmarks);
     Eigen::MatrixXd err;
     err = compute_error(landmarks);

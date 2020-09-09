@@ -60,7 +60,9 @@ public:
     // EqF functions
 
     void update_vel(const Matrix4d vel);
-
+    
+    void update_p0(vector<Landmark>& landmarks) const;
+    
     MatrixXd compute_c(vector<Landmark>& landmarks) const;
     MatrixXd compute_error(vector<Landmark>& landmarks);
     static MatrixXd build_Sigma(const vector<Landmark>& landmarks);

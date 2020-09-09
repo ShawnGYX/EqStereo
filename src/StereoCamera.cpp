@@ -23,7 +23,7 @@ typedef Eigen::Matrix<double, 2, 6> mat2x6d;
 Eigen::Matrix3d skew(const Eigen::Vector3d& x)
 {
     Eigen::Matrix3d x_s;
-    x_s << 0.0,-x.x(),x.y(),
+    x_s << 0.0,-x.z(),x.y(),
             x.z(),0,-x.x(),
             -x.y(),x.x(),0;
     
@@ -66,6 +66,7 @@ void StereoCamera::TrackLandmarks(vector<Landmark>& landmarks, const Mat &image_
         landmarks[i].camcoor_left = points_Undistort[i];
         landmarks[i].camcoor_left_distorted = points[i];
         landmarks[i].camcoor_left_norm = pointsNorm[i];
+        landmarks[i].lifecycle += 1;
 
     }
 
@@ -129,7 +130,8 @@ vector<Point2f> StereoCamera::detectNewFeatures(const vector<Landmark>& oldLandm
         lm.camcoor_left_norm = newFeaturesNorm[i];
         lm.X_lm = Eigen::Vector3d::Zero();
         lm.sig = Eigen::Matrix3d::Identity()*Sigma_coef;
-        
+        lm.isNew = true;
+        lm.lifecycle = 0;
 
         newlandmarks.emplace_back(lm);
     }
