@@ -37,7 +37,7 @@ vector<Landmark> SimWorld::generateRandomLandmarks(const int& number) {
 
         // Set the 3d coordinates of the landmark
         lm.p_0 = p;
-        lm.p_t_bff = Point3f(pBody.x(),pBody.y(),pBody.z());
+        lm.p_t_bff = Point3f(p_cam_left.x(),p_cam_left.y(),p_cam_left.z());
 
 
         // Save the true point
@@ -78,17 +78,17 @@ void SimWorld::updateLandmarkMeasurements(vector<Landmark>& landmarks) const {
         // Compute the left and right camera coordinates
         const Vector3d pBody = Rotation * (p - Translation);
         const Vector3d p_cam_left = unhomog(XL.inverse() * homog(pBody));
-        const Vector3d p_cam_right = unhomog(XR.inverse() * homog(pBody));
         const Vector3d p_img_left = 1/p_cam_left.z() * KL * p_cam_left;
-        const Vector3d p_img_right = 1/p_cam_right.z() * KL * p_cam_right;
-
         lm.camcoor_left_norm = Point2f(p_cam_left.x(), p_cam_left.y()) / p_cam_left.z();
         lm.camcoor_left = Point2f(p_img_left.x(), p_img_left.y()) / p_img_left.z();
+
+        const Vector3d p_cam_right = unhomog(XR.inverse() * homog(pBody));
+        const Vector3d p_img_right = 1/p_cam_right.z() * KR * p_cam_right;
         lm.camcoor_right_norm = Point2f(p_cam_right.x(), p_cam_right.y()) / p_cam_right.z();
         lm.camcoor_right = Point2f(p_img_right.x(), p_img_right.y()) / p_img_right.z();
 
         // Update landmark
         ++lm.lifecycle;
-        lm.p_t_bff = Point3f(pBody.x(),pBody.y(),pBody.z());
+        lm.p_t_bff = Point3f(p_cam_left.x(),p_cam_left.y(),p_cam_left.z());
     }
 }

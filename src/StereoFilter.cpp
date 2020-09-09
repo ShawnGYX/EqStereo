@@ -40,32 +40,27 @@ Eigen::MatrixXd StereoFilter::compute_c(vector<Landmark>& landmarks) const
 
     for (int i = 0; i < lm_num; i++)
     {
-        Eigen::Vector3d pi_hat;
-        pi_hat = landmarks[i].p_0 + P_init.block<3,3>(0,0)*landmarks[i].X_lm;
+        Eigen::Vector3d pi_hat = landmarks[i].p_0 + P_init.block<3,3>(0,0)*landmarks[i].X_lm;
 
         Eigen::Vector4d pi_hat_homo;
         pi_hat_homo << pi_hat.x(),pi_hat.y(),pi_hat.z(),1;
 
-        Eigen::Vector4d yi_hat_left;
-        yi_hat_left = XL.inverse()*Phat.inverse()*pi_hat_homo;
+        Vector4d qi_hat_homo = Phat.inverse()*pi_hat_homo;
+
+        Eigen::Vector4d yi_hat_left = XL.inverse() * qi_hat_homo;
+        Eigen::Vector4d yi_hat_right = XR.inverse() * qi_hat_homo;
 
         Eigen::Matrix<double,2,3> de_left;
         de_left << fx_left/yi_hat_left.z(),0,-fx_left*yi_hat_left.x()/(yi_hat_left.z()*yi_hat_left.z()),
                     0,fy_left/yi_hat_left.z(),-fy_left*yi_hat_left.y()/(yi_hat_left.z()*yi_hat_left.z());
 
-        Eigen::Matrix<double,2,3> ci_left;
-        ci_left = de_left*XL.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).inverse();
-        
-
-        Eigen::Vector4d yi_hat_right;
-        yi_hat_right = XR.inverse()*Phat.inverse()*pi_hat_homo;
+        Eigen::Matrix<double,2,3> ci_left = de_left*XL.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).inverse();
 
         Eigen::Matrix<double,2,3> de_right;
         de_right << fx_right/yi_hat_right.z(),0,-fx_right*yi_hat_right.x()/(yi_hat_right.z()*yi_hat_right.z()),
                     0,fy_right/yi_hat_right.z(),-fy_right*yi_hat_right.y()/(yi_hat_right.z()*yi_hat_right.z());
 
-        Eigen::Matrix<double,2,3> ci_right;
-        ci_right = de_right*XR.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).inverse();
+        Eigen::Matrix<double,2,3> ci_right = de_right*XR.block<3,3>(0,0).inverse()*X_rb.block<3,3>(0,0).inverse();
 
 
         // cout<<"Ci_left: "<<ci_left<<endl;
