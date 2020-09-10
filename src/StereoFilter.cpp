@@ -263,7 +263,7 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
 {
 
     // EqF
-    if (velocity.block<3,1>(0,3).norm()>0.5)
+    if (velocity.block<3,1>(0,3).norm()>0.5 || velocity.hasNaN())
     {
         this->update_vel(Eigen::Matrix4d::Identity());
 

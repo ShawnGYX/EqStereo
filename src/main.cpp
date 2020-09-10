@@ -36,7 +36,9 @@ int main(int argc, char** argv)
     fstream file("trajec_eqf.txt", ios::out);
     fstream file2("trajec.txt", ios::out);
     fstream file3("Formatted_traj.txt", ios::out);
-    
+    fstream file4("time.txt", ios::out);
+
+
     string rosbagFilename, rosbagTopic_1, rosbagTopic_2;
 
     rosbagFilename = argv[1];
