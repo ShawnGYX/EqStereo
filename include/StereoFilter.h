@@ -3,8 +3,12 @@
 #include "Eigen/Eigen"
 #include "Landmark.h"
 #include "Innov.h"
+
 #include <vector>
 #include "yaml-cpp/yaml.h"
+
+
+
 
 using namespace Eigen;
 using namespace std;
@@ -71,6 +75,10 @@ public:
     void update_innovation(const Innov &innovation, vector<Landmark>& landmarks);
     
     void integrateEquations(vector<Landmark>& landmarks, const Matrix4d& velocity);
+
+    void Save_trajec(const Eigen::Matrix4d tfmat, const string file, const double t);
+
+
 
     Matrix4d getPose() { return P_init * X_rb; }
 };

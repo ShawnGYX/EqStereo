@@ -3,8 +3,8 @@ featureDist: 20
 minHarrisQuality: 0.1
 featureSearchThreshold: 1.0
 outlierRejectionThresh: 1.0
-Sigma_coef: 5
+Sigma_coef: 10
 
 P_coef: 0.01
-Q_coef: 0.01
-dt: 0.05
+Q_coef: 1
+dt: 0.1

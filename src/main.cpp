@@ -51,6 +51,7 @@ int main(int argc, char** argv)
     StereoCamera sc(configNode);
     StereoFilter sf(configNode);
     vector<Landmark> landmarks;
+    
 
     bool left_ready = false;
     bool right_ready = false;
@@ -92,7 +93,8 @@ int main(int argc, char** argv)
             
             Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
             sf.integrateEquations(landmarks, velocity);
-
+            
+            sf.Save_trajec(sf.getPose(),"Formatted_traj.txt",t);
 
             left_ready = false;
             right_ready = false;

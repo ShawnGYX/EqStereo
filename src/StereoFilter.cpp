@@ -2,6 +2,7 @@
 #include "eigen3/unsupported/Eigen/MatrixFunctions"
 #include "fstream"
 #include <iostream>
+#include <iomanip>
 
 void Save_Matrix(Eigen::Matrix4d tfmat, const string file);
 
@@ -294,6 +295,18 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
 
     Save_Matrix(pose, "trajec_eqf.txt");
     
+}
+
+void StereoFilter::Save_trajec(const Eigen::Matrix4d tfmat, const string file, const double t)
+{
+    Quaterniond q(tfmat.block<3,3>(0,0));
+    
+    ofstream traj;
+    traj.open(file,ios::app);
+    traj<<setprecision(14)<<t<<' ';
+    traj<<tfmat(0,3)<<' '<<tfmat(1,3)<<' '<<tfmat(2,3)<<' '<<q.w()<<' '<<q.x()<<' '<<q.y()<<' '<<q.z()<<"\n";
+
+    traj.close();
 }
 
 void Save_Matrix(Eigen::Matrix4d tfmat, const string file)
