@@ -98,13 +98,19 @@ int main(int argc, char** argv)
 
             double t = cv_ptr_left->header.stamp.toSec();
             
-            Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
-            sf.integrateEquations(landmarks, velocity);
+            // if (t>1403636625.813555456)
+            if (t<1403636599.613555456)
+            {
+                Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+                sf.integrateEquations(landmarks, velocity);
             
-            sf.Save_trajec(sf.getPose(),"Formatted_traj.txt",t);
+                sf.Save_trajec(sf.getPose(),"Formatted_traj.txt",t);
 
+            
+            }
             left_ready = false;
             right_ready = false;
+            
         }
 
     }
