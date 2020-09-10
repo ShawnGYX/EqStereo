@@ -1,5 +1,6 @@
 #include "SimWorld.h"
 #include "eigen3/unsupported/Eigen/MatrixFunctions"
+#include "iostream"
 
 Vector4d homog(const Vector3d& p) {
     Vector4d pbar;
@@ -16,7 +17,7 @@ vector<Landmark> SimWorld::generateRandomLandmarks(const int& number) {
     for (Landmark& lm : landmarks) {
         // Generate a landmark
         const Vector3d p = (2*Vector3d::Random() + Vector3d(0,0,10));
-        const Vector3d pBody = Rotation * (p - Translation);
+        const Vector3d pBody = Rotation.transpose() * (p - Translation);
 
         // Ignore the distorted coordinates lm.camcoor_left_distorted and lm.camcoor_right_distorted
         const Vector3d p_cam_left = unhomog(XL.inverse() * homog(pBody));
@@ -37,7 +38,8 @@ vector<Landmark> SimWorld::generateRandomLandmarks(const int& number) {
 
         // Set the 3d coordinates of the landmark
         lm.p_0 = p;
-        lm.p_t_bff = Point3f(p_cam_left.x(),p_cam_left.y(),p_cam_left.z());
+        const Vector3d p_cam_left_noisy = p_cam_left + Vector3d::Random();
+        lm.p_t_bff = Point3f(p_cam_left_noisy.x(),p_cam_left_noisy.y(),p_cam_left_noisy.z());
 
 
         // Save the true point
@@ -76,7 +78,7 @@ void SimWorld::updateLandmarkMeasurements(vector<Landmark>& landmarks) const {
         const Vector3d& p = worldPoints[i];
 
         // Compute the left and right camera coordinates
-        const Vector3d pBody = Rotation * (p - Translation);
+        const Vector3d pBody = Rotation.transpose() * (p - Translation);
         const Vector3d p_cam_left = unhomog(XL.inverse() * homog(pBody));
         const Vector3d p_img_left = 1/p_cam_left.z() * KL * p_cam_left;
         lm.camcoor_left_norm = Point2f(p_cam_left.x(), p_cam_left.y()) / p_cam_left.z();

@@ -183,8 +183,14 @@ ${OpenCV_LIBS}
 ${YAML_CPP_LIBRARIES}
 )
 
-
+# Real config
 set(CONFIG_FILE "config.yaml")
 get_filename_component(CONFIG_FILE ${CONFIG_FILE} ABSOLUTE)
 message("Config file is ${CONFIG_FILE}")
 add_compile_definitions(CONFIG_FILE="${CONFIG_FILE}")
+
+# Simulation config
+set(SIM_CONFIG_FILE "sim_config.yaml")
+get_filename_component(SIM_CONFIG_FILE ${SIM_CONFIG_FILE} ABSOLUTE)
+message("Config file is ${SIM_CONFIG_FILE}")
+add_compile_definitions(SIM_CONFIG_FILE="${SIM_CONFIG_FILE}")

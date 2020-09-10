@@ -142,6 +142,10 @@ void StereoFilter::update_Sigma(Eigen::MatrixXd &C_mat, Eigen::MatrixXd &Sigma, 
     s = C_mat*Sigma*C_mat.transpose()+Q;
 
     Sigma += dt*(P-Sigma*C_mat.transpose()*s.inverse()*C_mat*Sigma);
+    MatrixXd eigs = Sigma.eigenvalues().real();
+
+    // The eigenvalues of Sigma should always be positive!
+    cout << "Sigma min eigen: " << eigs.minCoeff() << endl;
 
     for (int i = 0; i < lm_num; i++)
     {
@@ -292,7 +296,6 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
     this->update_Sigma(C, Sigma, landmarks);
 
     bool isMoving = true;
-    // cout << "Sigma eigs: " << Sigma.eigenvalues().transpose() << endl;
     if (velocity.block<3,1>(0,3).norm()<0.0004)
     {
         isMoving = false;
