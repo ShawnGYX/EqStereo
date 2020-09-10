@@ -145,7 +145,12 @@ void StereoFilter::update_Sigma(Eigen::MatrixXd &C_mat, Eigen::MatrixXd &Sigma, 
     MatrixXd eigs = Sigma.eigenvalues().real();
 
     // The eigenvalues of Sigma should always be positive!
+    if (Sigma.hasNaN()) {
+        cout << "Sigma has NaN values!" << endl;
+        throw("bad");
+    }
     cout << "Sigma min eigen: " << eigs.minCoeff() << endl;
+    cout << "Sigma max eigen: " << eigs.maxCoeff() << endl;
 
     for (int i = 0; i < lm_num; i++)
     {
@@ -154,69 +159,50 @@ void StereoFilter::update_Sigma(Eigen::MatrixXd &C_mat, Eigen::MatrixXd &Sigma, 
 }
 
 
-Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err, const Eigen::MatrixXd &Sigma, vector<Landmark>& landmarks, bool isMoving)
+Innov StereoFilter::Compute_innovation(const Eigen::MatrixXd &C_mat, const Eigen::MatrixXd &err,
+                    const Eigen::MatrixXd &Sigma, const vector<Landmark>& landmarks, bool isMoving)
 {
     
+    // Compute the base innovation
     int lm_num = landmarks.size();
-    Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(4*lm_num,4*lm_num)*Q_coef;
+    const Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(4*lm_num,4*lm_num)*Q_coef;
+    const Eigen::MatrixXd s = C_mat*Sigma*C_mat.transpose()+Q;
+    const Eigen::MatrixXd gamma = Sigma*C_mat.transpose()*s.inverse()*err;
 
-    Eigen::MatrixXd s;
-    s = C_mat*Sigma*C_mat.transpose()+Q;
-    Eigen::MatrixXd gamma;
-    gamma = Sigma*C_mat.transpose()*s.inverse()*err;
+    // Lift the innovation
+    // -------------------
 
-    Eigen::MatrixXd B = gamma;
-
-    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(3*lm_num,6);
-
+    // Compute Pose innovation Delta
+    Eigen::MatrixXd lsqmat = Eigen::MatrixXd::Zero(3*lm_num, 6);
     for (int i = 0; i < lm_num; i++)
     {   
-        double weight = sqrt(landmarks[i].lifecycle+1);
-        weight = 1;
-        Eigen::Vector4d q_i;
         Eigen::Vector4d pi_homo;
-
         pi_homo << landmarks[i].p_0.x(),landmarks[i].p_0.y(),landmarks[i].p_0.z(),1;
+        Eigen::Vector4d q_i = P_init.inverse()*pi_homo;
 
-        q_i = P_init.inverse()*pi_homo;
-
-        Eigen::Matrix3d q_a;
-        q_a = skew(landmarks[i].X_lm+q_i.head(3));
-
-        A.block<3,3>(3*(i),0) = weight*q_a;
-        A.block<3,3>(3*(i),3) = -weight*Eigen::Matrix3d::Identity();
-
-        B.block<3,1>(3*i,0) = weight*gamma.block<3,1>(3*i,0);
-
+        lsqmat.block<3,3>(3*(i),0) = skew(landmarks[i].X_lm + q_i.head(3));
+        lsqmat.block<3,3>(3*(i),3) = - Eigen::Matrix3d::Identity();
     }
 
-    Eigen::VectorXd v;
-    v = (A.transpose()*A).inverse()*A.transpose()*B;
-
-    Eigen::Matrix3d v_skew;
-    v_skew = skew(v.head(3));
-
+    Matrix<double,6,6> hess = lsqmat.transpose() * Sigma.inverse() * lsqmat;
+    Eigen::Matrix<double,6,1> DeltaVec = hess.ldlt().solve(lsqmat.transpose() * Sigma.inverse() * gamma);
     Eigen::Matrix4d Delta = Eigen::Matrix4d::Zero();
-    Delta.block<3,3>(0,0) = v_skew;
-    Delta.block<3,1>(0,3) = v.tail(3);
+    Delta.block<3,3>(0,0) = skew(DeltaVec.head(3));
+    Delta.block<3,1>(0,3) = DeltaVec.tail(3);
 
+    // Compute point innovations delta
     Eigen::MatrixXd delta = Eigen::MatrixXd::Zero(3*lm_num,1);
-
     for (int i = 0; i < lm_num; i++)
     {
-        Eigen::Vector4d q_i;
         Eigen::Vector4d pi_homo;
-
         pi_homo << landmarks[i].p_0.x(),landmarks[i].p_0.y(),landmarks[i].p_0.z(),1;
+        Eigen::Vector4d q_i = P_init.inverse()*pi_homo;
 
-        q_i = P_init.inverse()*pi_homo;
-
-        delta.block<3,1>(3*(i),0) = gamma.block<3,1>(3*(i),0)+v_skew*q_i.head(3)+v.tail(3);
+        delta.block<3,1>(3*(i),0) = gamma.block<3,1>(3*(i),0) + Delta.block<3,3>(0,0)*q_i.head(3) + Delta.block<3,1>(0,3);
     }
 
-
+    // Put into innovation struct
     Innov Inn;
-
     if (isMoving)
     {
         Inn.Del = Delta;

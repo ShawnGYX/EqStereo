@@ -67,7 +67,7 @@ public:
     MatrixXd compute_error(vector<Landmark>& landmarks);
     static MatrixXd build_Sigma(const vector<Landmark>& landmarks);
     void update_Sigma(MatrixXd &C_mat, MatrixXd &Sigma, vector<Landmark>& landmarks);
-    Innov Compute_innovation(const MatrixXd &C_mat, const MatrixXd &err, const MatrixXd &Sigma, vector<Landmark>& landmarks, bool isMoving);
+    Innov Compute_innovation(const MatrixXd &C_mat, const MatrixXd &err, const MatrixXd &Sigma, const vector<Landmark>& landmarks, bool isMoving);
     void update_innovation(const Innov &innovation, vector<Landmark>& landmarks);
     
     void integrateEquations(vector<Landmark>& landmarks, const Matrix4d& velocity);

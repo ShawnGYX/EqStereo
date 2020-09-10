@@ -424,12 +424,11 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     
     assert(pntset_0.size()==pntset_1.size());
     
-    this->addNewLandmarks(landmarks, newLandmarks);
-    
 
     if (pntset_0.empty()) {
         Image_t0_L = img_left.clone();
         Image_t0_R = img_right.clone();
+        this->addNewLandmarks(landmarks, newLandmarks);
         return Eigen::Matrix4d::Identity();
     }
 
@@ -464,6 +463,8 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
 
     // Outlier rejection
     this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
+
+    this->addNewLandmarks(landmarks, newLandmarks);
 
     Image_t0_L = img_left.clone();
     Image_t0_R = img_right.clone();
