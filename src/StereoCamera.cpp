@@ -379,7 +379,7 @@ void StereoCamera::OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d
         Eigen::Vector4d pnt_new;
         pnt_old<<pnt_0[i].x,pnt_0[i].y,pnt_0[i].z;
         pnt_new<<pnt_1[i].x,pnt_1[i].y,pnt_1[i].z,1;
-        if ((pnt_old-(vel*pnt_new).head(3)).norm() > outlierRejectionThresh) 
+        if ((pnt_old-(vel*pnt_new).head(3)).norm() > outlierRejectionThresh || pnt_0[i].z<1.5 || pnt_0[i].z>8) 
         {
             landmarks.erase(landmarks.begin() + i);
             continue;
