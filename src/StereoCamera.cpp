@@ -379,7 +379,7 @@ void StereoCamera::OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d
         Eigen::Vector4d pnt_new;
         pnt_old<<pnt_0[i].x,pnt_0[i].y,pnt_0[i].z;
         pnt_new<<pnt_1[i].x,pnt_1[i].y,pnt_1[i].z,1;
-        if ((pnt_old-(vel*pnt_new).head(3)).norm() > outlierRejectionThresh || pnt_0[i].z<1.5 || pnt_0[i].z>8) 
+        if ((pnt_old-(vel*pnt_new).head(3)).norm() > outlierRejectionThresh) 
         {
             landmarks.erase(landmarks.begin() + i);
             continue;
@@ -443,23 +443,26 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     cv2eigen(R_inbuilt, r_mat);
     
     // Invert due to OpenCV's odd choice of frame change direction
-    // Rotation = r_mat.transpose();
-    // Translation = -r_mat.transpose()*t_mat;
-    Rotation = r_mat;
-    Translation = t_mat;
+    Rotation = r_mat.transpose();
+    Translation = -r_mat.transpose()*t_mat;
+    
+    
+    
+    // Rotation = r_mat;
+    // Translation = t_mat;
 
-    for (int iteration_1 = 0; iteration_1 < 6; iteration_1++)
-    {
-        int iter4 = reprojection_gauss_newton(lm_t1_image_left,pntset_0,Rotation,Translation);
-    }
+    // for (int iteration_1 = 0; iteration_1 < 6; iteration_1++)
+    // {
+    //     int iter4 = reprojection_gauss_newton(lm_t1_image_left,pntset_0,Rotation,Translation);
+    // }
 
     // TODO: What is going on with rotation here?
     // Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
     // Translation << -Translation;
     
     // Invert rotation and translation due to frame choice
-    Translation = - Rotation.transpose() * Translation;
-    Rotation = Rotation.transpose();
+    // Translation = - Rotation.transpose() * Translation;
+    // Rotation = Rotation.transpose();
 
     // Create the pose change matrix from frame cam0 at t0 to cam0 at t1
     Eigen::Matrix4d tfmat = Eigen::Matrix4d::Identity();

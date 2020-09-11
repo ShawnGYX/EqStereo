@@ -38,6 +38,7 @@ int main(int argc, char** argv)
     fstream file3("Formatted_traj.txt", ios::out);
     fstream file4("time.txt", ios::out);
 
+    Eigen::Matrix4d vel_pre;
 
     string rosbagFilename, rosbagTopic_1, rosbagTopic_2;
 
@@ -97,15 +98,22 @@ int main(int argc, char** argv)
             }
 
             double t = cv_ptr_left->header.stamp.toSec();
-            
-            if (t>1403636625.813555456)
+            if (t>0)
+            // if (t>1403636625.813555456)
             // if (t<1403636599.613555456)
             {
                 Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
+                
+                if (velocity.block<3,1>(0,3).norm()>0.5 || velocity.hasNaN())
+                {
+                    velocity = vel_pre;
+                }
+                
                 sf.integrateEquations(landmarks, velocity);
             
                 sf.Save_trajec(sf.getPose(),"Formatted_traj.txt",t);
 
+                vel_pre=velocity;
             
             }
             left_ready = false;
