@@ -442,8 +442,11 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     cv2eigen(tvec,t_mat);
     cv2eigen(R_inbuilt, r_mat);
     
-    Rotation = r_mat.transpose();
-    Translation = -r_mat.transpose()*t_mat;
+    // Invert due to OpenCV's odd choice of frame change direction
+    // Rotation = r_mat.transpose();
+    // Translation = -r_mat.transpose()*t_mat;
+    Rotation = r_mat;
+    Translation = t_mat;
 
     for (int iteration_1 = 0; iteration_1 < 6; iteration_1++)
     {
@@ -453,6 +456,8 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     // TODO: What is going on with rotation here?
     // Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
     // Translation << -Translation;
+    
+    // Invert rotation and translation due to frame choice
     Translation = - Rotation.transpose() * Translation;
     Rotation = Rotation.transpose();
 
