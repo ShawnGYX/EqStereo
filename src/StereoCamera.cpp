@@ -419,12 +419,6 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     this->init3DCoordinates(newLandmarks, currentPose);
     this->update3DCoordinate(landmarks);
     
-    vector<Point3f> pntset_1(landmarks.size());
-    transform(landmarks.begin(), landmarks.end(), pntset_1.begin(), [](const Landmark& lm) {return lm.p_t_bff; });
-    
-    assert(pntset_0.size()==pntset_1.size());
-    
-
     if (pntset_0.empty()) {
         Image_t0_L = img_left.clone();
         Image_t0_R = img_right.clone();
@@ -470,6 +464,9 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     tfmat.block<3,1>(0,3) << Translation;
     
     
+    vector<Point3f> pntset_1(landmarks.size());
+    transform(landmarks.begin(), landmarks.end(), pntset_1.begin(), [](const Landmark& lm) {return lm.p_t_bff; });
+    assert(pntset_0.size()==pntset_1.size());
     this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
     
     
