@@ -468,7 +468,11 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     Eigen::Matrix4d tfmat = Eigen::Matrix4d::Identity();
     tfmat.block<3,3>(0,0) << Rotation;
     tfmat.block<3,1>(0,3) << Translation;
-
+    
+    
+    this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
+    
+    
     // Change to frame imu at t0 to imu at t1 (use the Adjoint!)
     tfmat = XL * tfmat * XL.inverse();
 
@@ -476,7 +480,7 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     Save_t(t,"time.txt");
 
     // Outlier rejection
-    this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
+    
 
     this->addNewLandmarks(landmarks, newLandmarks);
 
