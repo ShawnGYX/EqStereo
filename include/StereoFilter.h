@@ -78,7 +78,7 @@ public:
 
     void Save_trajec(const Eigen::Matrix4d tfmat, const string file, const double t);
 
-
+   
 
     Matrix4d getPose() { return P_init * X_rb; }
 };

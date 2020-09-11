@@ -258,6 +258,8 @@ void StereoFilter::update_innovation(const Innov &innovation, vector<Landmark>& 
 
 
 
+
+
 // Processing image
 void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4d& velocity)
 {
@@ -296,6 +298,8 @@ void StereoFilter::integrateEquations(vector<Landmark>& landmarks, const Matrix4
     Save_Matrix(pose, "trajec_eqf.txt");
     
 }
+
+
 
 void StereoFilter::Save_trajec(const Eigen::Matrix4d tfmat, const string file, const double t)
 {

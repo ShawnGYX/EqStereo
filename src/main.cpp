@@ -37,6 +37,7 @@ int main(int argc, char** argv)
     fstream file2("trajec.txt", ios::out);
     fstream file3("Formatted_traj.txt", ios::out);
     fstream file4("time.txt", ios::out);
+    fstream filt5("err.txt", ios::out);
 
     Eigen::Matrix4d vel_pre;
 
@@ -98,8 +99,8 @@ int main(int argc, char** argv)
             }
 
             double t = cv_ptr_left->header.stamp.toSec();
-            if (t>0)
-            // if (t>1403636625.813555456)
+            // if (t>0)
+            if (t>1403636625.813555456)
             // if (t<1403636599.613555456)
             {
                 Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);

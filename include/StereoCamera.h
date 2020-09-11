@@ -99,7 +99,8 @@ public:
     );
 
     void OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d& vel, const vector<Point3f>& pnt_0, const vector<Point3f>& pnt_1);
-
+     void Save_err(vector<double> err, const string file, double t);
+    vector<double> output_err(const Eigen::Matrix4d &velocity, vector<Landmark> &landmarks);
     // Main Stereo Camera
     Eigen::Matrix4d processImages(vector<Landmark>& landmarks, const Eigen::Matrix4d& currentPose, const Mat& img_left, const Mat& img_right, const double& t);
 };

@@ -372,6 +372,24 @@ int StereoCamera::reprojection_gauss_newton(
     return iter;
 }
 
+void StereoCamera::Save_err(vector<double> err, const string file, double t)
+{
+    ofstream err_data;
+    err_data.open(file,ios::app);
+    err_data<<setprecision(14)<<t<<'\n';
+    for (int i = 0; i < err.size(); i++)
+    {
+        err_data<<err[i]<<"\n";
+    }
+    err_data<<endl;
+
+    err_data.close();
+    
+    
+
+
+}
+
 void StereoCamera::OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d& vel, const vector<Point3f>& pnt_0, const vector<Point3f>& pnt_1)
 {
     for (long int i=landmarks.size()-1; i >= 0; --i) {
@@ -387,6 +405,32 @@ void StereoCamera::OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d
 
 
     }
+
+}
+vector<double> StereoCamera::output_err(const Eigen::Matrix4d &velocity, vector<Landmark> &landmarks)
+{
+    int lm_num = landmarks.size();
+
+    vector<double> err;
+
+    for (int i = 0; i < lm_num; i++)
+    {
+        Eigen::Vector4d p3d; 
+        p3d << landmarks[i].p_t_bff.x,landmarks[i].p_t_bff.y,landmarks[i].p_t_bff.z,1;
+
+        Eigen::Vector4d p3d_trans = velocity*p3d;
+
+        Eigen::Vector2d p_reproj;
+        p_reproj.x() = fx_left*p3d_trans.x()/p3d_trans.z()+cx_left;
+        p_reproj.y() = fy_left*p3d_trans.y()/p3d_trans.z()+cy_left;
+
+        Eigen::Vector2d lm_err;
+        lm_err<< p_reproj.x()-landmarks[i].camcoor_left.x,p_reproj.y()-landmarks[i].camcoor_left.y;
+        
+        err.emplace_back(lm_err.norm());
+    }
+    
+    return err;
 
 }
 
@@ -425,17 +469,21 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
         this->addNewLandmarks(landmarks, newLandmarks);
         return Eigen::Matrix4d::Identity();
     }
-
+    vector<int> inlier_idx;
     // Estimate rotation and translation
     Mat rvec, tvec;
-    solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.98999, noArray(), cv::SOLVEPNP_EPNP);
+    solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.98999, inlier_idx, cv::SOLVEPNP_EPNP);
     cv::Mat R_inbuilt;
     cv::Rodrigues(rvec, R_inbuilt);
     Eigen::Matrix3d r_mat;
     Eigen::MatrixXd t_mat;
     cv2eigen(tvec,t_mat);
     cv2eigen(R_inbuilt, r_mat);
+
     
+
+    
+
     // Invert due to OpenCV's odd choice of frame change direction
     Rotation = r_mat.transpose();
     Translation = -r_mat.transpose()*t_mat;
@@ -463,6 +511,8 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     tfmat.block<3,3>(0,0) << Rotation;
     tfmat.block<3,1>(0,3) << Translation;
     
+    vector<double> reproj_err = output_err(tfmat.inverse(),landmarks);
+    Save_err(reproj_err, "err.txt",t);
     
     vector<Point3f> pntset_1(landmarks.size());
     transform(landmarks.begin(), landmarks.end(), pntset_1.begin(), [](const Landmark& lm) {return lm.p_t_bff; });
