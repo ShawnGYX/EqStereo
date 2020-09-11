@@ -8,3 +8,5 @@ Sigma_coef: 5
 P_coef: 0.1
 Q_coef: 0.7
 dt: 0.05
+
+start: 1403636625.813555456 # Flying

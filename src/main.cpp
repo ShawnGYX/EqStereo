@@ -99,9 +99,7 @@ int main(int argc, char** argv)
             }
 
             double t = cv_ptr_left->header.stamp.toSec();
-            // if (t>0)
-            if (t>1403636625.813555456)
-            // if (t<1403636599.613555456)
+            if (t > configNode["start"].as<double>()  )
             {
                 Eigen::Matrix4d velocity = sc.processImages(landmarks, sf.getPose(), cv_ptr_left->image.clone(), cv_ptr_right->image.clone(), t);
                 
