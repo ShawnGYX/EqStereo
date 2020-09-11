@@ -451,12 +451,18 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     }
 
     // TODO: What is going on with rotation here?
-    Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
-    Translation << -Translation;
+    // Rotation << Rotation(0,0), -Rotation(0,1), -Rotation(0,2),-Rotation(1,0),Rotation(1,1), -Rotation(1,2),-Rotation(2,0),-Rotation(2,1),Rotation(2,2);
+    // Translation << -Translation;
+    Translation = - Rotation.transpose() * Translation;
+    Rotation = Rotation.transpose();
 
+    // Create the pose change matrix from frame cam0 at t0 to cam0 at t1
     Eigen::Matrix4d tfmat = Eigen::Matrix4d::Identity();
     tfmat.block<3,3>(0,0) << Rotation;
     tfmat.block<3,1>(0,3) << Translation;
+
+    // Change to frame imu at t0 to imu at t1 (use the Adjoint!)
+    tfmat = XL * tfmat * XL.inverse();
 
     Save_Matrix(tfmat, "trajec.txt");
     Save_t(t,"time.txt");
