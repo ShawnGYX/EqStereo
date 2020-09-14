@@ -307,8 +307,8 @@ void StereoFilter::Save_trajec(const Eigen::Matrix4d tfmat, const string file, c
     
     ofstream traj;
     traj.open(file,ios::app);
-    traj<<setprecision(14)<<t<<' ';
-    traj<<tfmat(0,3)<<' '<<tfmat(1,3)<<' '<<tfmat(2,3)<<' '<<q.w()<<' '<<q.x()<<' '<<q.y()<<' '<<q.z()<<"\n";
+    traj<<setprecision(14)<<t<<',';
+    traj<<tfmat(0,3)<<','<<tfmat(1,3)<<','<<tfmat(2,3)<<','<<q.w()<<','<<q.x()<<','<<q.y()<<','<<q.z()<<"\n";
 
     traj.close();
 }

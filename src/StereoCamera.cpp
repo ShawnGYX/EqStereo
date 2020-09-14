@@ -379,7 +379,7 @@ void StereoCamera::Save_err(vector<double> err, const string file, double t)
     err_data<<setprecision(14)<<t<<'\n';
     for (int i = 0; i < err.size(); i++)
     {
-        err_data<<err[i]<<"\n";
+        err_data<<setprecision(5)<<err[i]<<" ";
     }
     err_data<<endl;
 
@@ -409,11 +409,10 @@ void StereoCamera::OutlierRej(vector<Landmark>& landmarks, const Eigen::Matrix4d
 }
 vector<double> StereoCamera::output_err(const Eigen::Matrix4d &velocity, vector<Landmark> &landmarks)
 {
-    int lm_num = landmarks.size();
 
     vector<double> err;
 
-    for (int i = 0; i < lm_num; i++)
+    for (long int i=landmarks.size()-1; i >= 0; --i)
     {
         Eigen::Vector4d p3d; 
         p3d << landmarks[i].p_t_bff.x,landmarks[i].p_t_bff.y,landmarks[i].p_t_bff.z,1;
@@ -428,6 +427,12 @@ vector<double> StereoCamera::output_err(const Eigen::Matrix4d &velocity, vector<
         lm_err<< p_reproj.x()-landmarks[i].camcoor_left.x,p_reproj.y()-landmarks[i].camcoor_left.y;
         
         err.emplace_back(lm_err.norm());
+
+        if (lm_err.norm()>8)
+        {
+            landmarks.erase(landmarks.begin() + i);
+            continue;
+        }
     }
     
     return err;
@@ -472,7 +477,7 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     vector<int> inlier_idx;
     // Estimate rotation and translation
     Mat rvec, tvec;
-    solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.98999, inlier_idx, cv::SOLVEPNP_EPNP);
+    solvePnPRansac(pntset_0, lm_t1_image_left, Camera_left, noArray(), rvec, tvec, false, 100, 4.0F, 0.99, inlier_idx, cv::SOLVEPNP_EPNP);
     cv::Mat R_inbuilt;
     cv::Rodrigues(rvec, R_inbuilt);
     Eigen::Matrix3d r_mat;
@@ -488,6 +493,14 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     Rotation = r_mat.transpose();
     Translation = -r_mat.transpose()*t_mat;
     
+    for (long int i=landmarks.size()-1; i >= 0; --i)
+    {
+        if (binary_search(inlier_idx.begin(),inlier_idx.end(),i) == false)
+        {
+            landmarks.erase(landmarks.begin() + i);
+            continue;
+        }
+    }
     
     
     // Rotation = r_mat;
@@ -517,7 +530,7 @@ Eigen::Matrix4d StereoCamera::processImages(vector<Landmark>& landmarks, const E
     vector<Point3f> pntset_1(landmarks.size());
     transform(landmarks.begin(), landmarks.end(), pntset_1.begin(), [](const Landmark& lm) {return lm.p_t_bff; });
     assert(pntset_0.size()==pntset_1.size());
-    this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
+    // this->OutlierRej(landmarks,tfmat,pntset_0,pntset_1);
     
     
     // Change to frame imu at t0 to imu at t1 (use the Adjoint!)
