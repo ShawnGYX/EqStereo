@@ -8,6 +8,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
 parser = argparse.ArgumentParser(description="Compare estimated and groundtruth trajectories.")
 parser.add_argument("est_poses", metavar='e', type=str, help="The file containing estimated poses.")
 parser.add_argument("gt_poses", metavar='g', type=str, help="The file containing groundtruth poses.")
@@ -222,5 +225,6 @@ ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 ax.set_zlabel("z (m)")
 ax.set_title("Ground truth and Estimated Trajectories")
+ax.legend(["True", "Est."])
 
 plt.show()
