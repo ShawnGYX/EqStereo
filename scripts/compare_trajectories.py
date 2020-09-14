@@ -218,6 +218,9 @@ ax.plot(np.hstack([pose._x._trans[0] for pose in aposes]),
 ax.plot(np.hstack([pose._x._trans[0] for pose in eposes]),
         np.hstack([pose._x._trans[1] for pose in eposes]),
         np.hstack([pose._x._trans[2] for pose in eposes]), '--')
-
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
+ax.set_zlabel("z (m)")
+ax.set_title("Ground truth and Estimated Trajectories")
 
 plt.show()
